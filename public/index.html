@@ -500,16 +500,17 @@ async function autoLoad() {
   try {
     const res = await fetch('/data');
     if (!res.ok) {
-      showLoadMsg('📭', 'Dados ainda não disponíveis.', 'Aguarde a próxima atualização pelo administrador.');
+      showLoadMsg('📭', 'Dados de Digitação ainda não disponíveis.', 'Aguarde a próxima atualização pelo administrador.');
+      checkMSNav();
       return;
     }
     const text = await res.text();
     ALL_ROWS = parseCSV(text).map(rowToObj);
     if (!ALL_ROWS.length) {
       showLoadMsg('⚠️', 'Arquivo de dados vazio.', 'Solicite uma nova atualização ao administrador.');
+      checkMSNav();
       return;
     }
-    // Busca data da última atualização
     fetch('/status').then(r=>r.json()).then(s => {
       if (s.updatedAt) {
         const d = new Date(s.updatedAt);
@@ -519,9 +520,29 @@ async function autoLoad() {
       }
     }).catch(()=>{});
     initDashboard();
+    const tab = new URLSearchParams(location.search).get('tab');
+    if (tab === 'ms') switchTab('ms');
   } catch {
     showLoadMsg('⚠️', 'Erro de conexão.', 'Verifique sua internet e recarregue a página.');
+    checkMSNav();
   }
+}
+
+async function checkMSNav() {
+  try {
+    const s = await fetch('/ms-status').then(r => r.json());
+    if (!s.hasData) return;
+    const nav = document.getElementById('top-nav');
+    nav.style.display = 'flex';
+    const tab = new URLSearchParams(location.search).get('tab');
+    if (tab === 'ms') {
+      document.getElementById('upload-screen').style.display = 'none';
+      document.getElementById('ms-wrapper').style.display    = 'block';
+      document.getElementById('tab-ms').classList.add('active');
+      document.getElementById('tab-dig').classList.remove('active');
+      loadMSData();
+    }
+  } catch {}
 }
 
 function showLoadMsg(icon, msg, sub) {
@@ -1540,7 +1561,10 @@ async function uploadData() {
     if (data.ok) {
       status.style.color = 'var(--green)';
       status.textContent = '✅ ' + data.message;
-      setTimeout(() => location.reload(), 1800);
+      const dest = adminType === 'ms'
+        ? location.pathname + (new URLSearchParams(location.search).has('admin') ? '?admin&tab=ms' : '?tab=ms')
+        : location.href;
+      setTimeout(() => { location.href = dest; }, 1800);
     } else {
       status.style.color = 'var(--red)';
       status.textContent = '❌ ' + data.error;
