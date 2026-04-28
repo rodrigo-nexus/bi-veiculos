@@ -201,9 +201,52 @@
   .meta-table td.pct-cell { font-weight: 700; }
   .meta-gap { font-size: .75rem; color: var(--red); }
   .meta-gap.ok { color: var(--green); }
+
+  /* TOP NAV */
+  #top-nav { background: var(--card); border-bottom: 2px solid var(--border); padding: .6rem 1.5rem; display: none; gap: .5rem; position: sticky; top: 0; z-index: 300; align-items: center; }
+  .top-tab { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: .45rem 1.3rem; cursor: pointer; font-size: .9rem; font-weight: 700; transition: all .15s; }
+  .top-tab.active { background: var(--accent); border-color: var(--accent); color: #000; }
+  .top-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+  .top-nav-title { font-size: .8rem; color: var(--muted); margin-left: auto; }
+
+  /* MS LOADING */
+  #ms-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 2rem; }
+
+  /* MS SEMÁFORO */
+  .ms-badge-green  { background: rgba(34,197,94,.15);  color: var(--green);  font-weight:700; font-size:.82rem; padding:.2rem .55rem; border-radius:20px; display:inline-flex; align-items:center; gap:.3rem; }
+  .ms-badge-yellow { background: rgba(245,158,11,.15); color: var(--yellow); font-weight:700; font-size:.82rem; padding:.2rem .55rem; border-radius:20px; display:inline-flex; align-items:center; gap:.3rem; }
+  .ms-badge-red    { background: rgba(239,68,68,.15);  color: var(--red);    font-weight:700; font-size:.82rem; padding:.2rem .55rem; border-radius:20px; display:inline-flex; align-items:center; gap:.3rem; }
+  .ms-badge-gray   { background: rgba(148,163,184,.1); color: var(--muted);  font-weight:700; font-size:.82rem; padding:.2rem .55rem; border-radius:20px; display:inline-flex; align-items:center; gap:.3rem; }
+
+  /* MS OPORTUNIDADE */
+  .oport-item { background: var(--card); border-radius: 10px; padding: .9rem 1.1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+  .oport-left { flex: 1; min-width: 0; }
+  .oport-name { font-weight: 700; font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .oport-city { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+  .oport-right { text-align: right; flex-shrink: 0; }
+  .oport-val  { font-size: 1.05rem; font-weight: 800; color: var(--accent); }
+  .oport-sub  { font-size: .72rem; color: var(--muted); }
+
+  /* MS SIMULAÇÃO */
+  .sim-input-row { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+  .sim-input { background: var(--card2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: .45rem .8rem; font-size: 1rem; font-weight: 700; width: 80px; text-align: center; }
+  .sim-summary { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: .75rem; }
+  .sim-stat { background: var(--card); border-radius: 10px; padding: .75rem 1.1rem; flex: 1; min-width: 130px; }
+  .sim-stat-label { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .sim-stat-val   { font-size: 1.4rem; font-weight: 800; line-height: 1.2; margin-top: .15rem; }
+
+  /* MS RITMO SEMANAL */
+  .semana-label { font-size: .78rem; color: var(--muted); text-align: center; }
 </style>
 </head>
 <body>
+
+<!-- TOP NAV -->
+<nav id="top-nav">
+  <button class="top-tab active" id="tab-dig"  onclick="switchTab('dig')">📊 Digitação</button>
+  <button class="top-tab"        id="tab-ms"   onclick="switchTab('ms')">🏪 Market Share</button>
+  <span class="top-nav-title" id="top-nav-praca"></span>
+</nav>
 
 <!-- TELA DE LOADING / SEM DADOS -->
 <div id="upload-screen" style="display:flex">
@@ -498,8 +541,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 function initDashboard() {
-  document.getElementById('upload-screen').style.display  = 'none';
-  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display     = 'block';
+  // Mostra top nav e define praça
+  const nav = document.getElementById('top-nav');
+  nav.style.display = 'flex';
 
   // Header info
   const praca = ALL_ROWS[0]?.filial?.replace(' - P','') || '—';
@@ -1454,11 +1500,29 @@ function renderPlanoAcao(m, lojas, rows) {
 
 // ─── ADMIN ────────────────────────────────────────────────────────────────────
 let adminDropFile = null;
+let adminType = 'dig';
+
+function setAdminType(t) {
+  adminType = t;
+  const btnDig = document.getElementById('admin-type-dig');
+  const btnMS  = document.getElementById('admin-type-ms');
+  if (t === 'dig') {
+    btnDig.style.background = 'var(--accent)'; btnDig.style.color = '#000'; btnDig.style.border = 'none';
+    btnMS.style.background  = 'var(--card2)';  btnMS.style.color  = 'var(--muted)'; btnMS.style.border = '1px solid var(--border)';
+  } else {
+    btnMS.style.background  = 'var(--accent)'; btnMS.style.color  = '#000'; btnMS.style.border = 'none';
+    btnDig.style.background = 'var(--card2)';  btnDig.style.color = 'var(--muted)'; btnDig.style.border = '1px solid var(--border)';
+  }
+  document.getElementById('admin-drop-name').textContent = 'Arraste o CSV ou clique para selecionar';
+  document.getElementById('admin-file').value = '';
+  adminDropFile = null;
+}
 
 async function uploadData() {
   const pwd    = document.getElementById('admin-pwd').value.trim();
   const file   = document.getElementById('admin-file').files[0] || adminDropFile;
   const status = document.getElementById('admin-status');
+  const endpoint = adminType === 'ms' ? '/ms-upload' : '/upload';
 
   if (!pwd)  { status.style.color = 'var(--yellow)'; status.textContent = 'Informe a senha.'; return; }
   if (!file) { status.style.color = 'var(--yellow)'; status.textContent = 'Selecione um arquivo CSV.'; return; }
@@ -1471,7 +1535,7 @@ async function uploadData() {
   form.append('csv', file);
 
   try {
-    const res  = await fetch('/upload', { method: 'POST', headers: { 'x-password': pwd }, body: form });
+    const res  = await fetch(endpoint, { method: 'POST', headers: { 'x-password': pwd }, body: form });
     const data = await res.json();
     if (data.ok) {
       status.style.color = 'var(--green)';
@@ -1489,6 +1553,506 @@ async function uploadData() {
   }
 }
 
+// ─── TAB NAVIGATION ───────────────────────────────────────────────────────────
+let currentTopTab = 'dig';
+
+function switchTab(tab) {
+  currentTopTab = tab;
+  const isDig = tab === 'dig';
+  document.getElementById('upload-screen').style.display = isDig ? (ALL_ROWS.length ? 'none' : 'flex') : 'none';
+  document.getElementById('dashboard').style.display     = isDig && ALL_ROWS.length ? 'block' : 'none';
+  document.getElementById('ms-wrapper').style.display    = isDig ? 'none' : 'block';
+  document.getElementById('tab-dig').classList.toggle('active', isDig);
+  document.getElementById('tab-ms').classList.toggle('active', !isDig);
+  if (!isDig && !MS_LOADED) loadMSData();
+}
+
+// ─── MARKET SHARE — DADOS ─────────────────────────────────────────────────────
+let MS_ROWS = [];
+let MS_LOADED = false;
+let msCurrentMonth = 'ALL';
+let chartMSWeekly = null;
+
+function parseMSVal(s) {
+  if (!s || !s.trim() || s.trim() === '0') return 0;
+  s = s.trim();
+  const mm  = s.match(/([\d.]+)\s*MM/i);  if (mm)  return parseFloat(mm[1])  * 1e6;
+  const mil = s.match(/([\d.]+)\s*mil/i); if (mil) return parseFloat(mil[1]) * 1e3;
+  return parseFloat(s.replace('%','').replace(/[^\d.]/g,'')) || 0;
+}
+
+function parseMSCSV(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  return lines.slice(1).map(line => {
+    const c = line.split(',');
+    if (c.length < 17) return null;
+    const loja = c[2]?.trim(); const mes = c[4]?.trim();
+    if (!loja || !mes || !/^\d{4}-\d{2}$/.test(mes)) return null;
+    return {
+      loja, mes,
+      cidade:   c[6]?.trim() || '—',
+      prodC6:   parseMSVal(c[12]),
+      finTotal: parseMSVal(c[13]),
+      finPA:    parseMSVal(c[15]),
+      msPA:     parseMSVal(c[16]),
+    };
+  }).filter(Boolean);
+}
+
+function getMSRows() {
+  return msCurrentMonth === 'ALL' ? MS_ROWS : MS_ROWS.filter(r => r.mes === msCurrentMonth);
+}
+
+function getMSMonth() {
+  if (msCurrentMonth !== 'ALL') return msCurrentMonth;
+  return [...new Set(MS_ROWS.map(r => r.mes))].sort().slice(-1)[0] || null;
+}
+
+function prevMSMonth(mes) {
+  const [y, m] = mes.split('-').map(Number);
+  const d = new Date(y, m - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function calcMSMetrics(rows) {
+  const prodC6 = rows.reduce((s,r) => s + r.prodC6, 0);
+  const finPA  = rows.reduce((s,r) => s + r.finPA,  0);
+  const msPA   = finPA > 0 ? prodC6 / finPA * 100 : 0;
+  const ativas = rows.filter(r => r.prodC6 > 0).length;
+  const total  = rows.length;
+  const inexpl = Math.max(0, finPA - prodC6);
+  // HHI
+  let hhi = 0;
+  if (prodC6 > 0) {
+    hhi = Math.round(rows.filter(r=>r.prodC6>0).reduce((s,r) => s + (r.prodC6/prodC6*100)**2, 0));
+  }
+  return { prodC6, finPA, msPA, ativas, total, inexpl, hhi };
+}
+
+async function loadMSData() {
+  const icon = document.getElementById('ms-loading-icon');
+  const msg  = document.getElementById('ms-loading-msg');
+  const sub  = document.getElementById('ms-loading-sub');
+  document.getElementById('ms-loading').style.display   = 'flex';
+  document.getElementById('ms-dashboard').style.display = 'none';
+  icon.textContent = '⏳'; msg.textContent = 'Carregando Market Share...'; sub.textContent = '';
+  try {
+    const res = await fetch('/ms-data');
+    if (!res.ok) {
+      icon.textContent = '📭'; msg.textContent = 'Dados de MS não disponíveis.';
+      sub.textContent  = 'Acesse com ?admin para fazer o upload.';
+      return;
+    }
+    const text = await res.text();
+    MS_ROWS = parseMSCSV(text);
+    if (!MS_ROWS.length) {
+      icon.textContent = '⚠️'; msg.textContent = 'Arquivo de MS vazio.'; return;
+    }
+    MS_LOADED = true;
+    fetch('/ms-status').then(r=>r.json()).then(s => {
+      if (s.updatedAt) {
+        const d = new Date(s.updatedAt);
+        document.getElementById('ms-hdr-updated').textContent =
+          'Atualizado: ' + d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        document.getElementById('ms-hdr-updated').style.display = '';
+      }
+    }).catch(()=>{});
+    initMSDashboard();
+  } catch {
+    icon.textContent = '⚠️'; msg.textContent = 'Erro ao carregar MS.';
+    sub.textContent  = 'Verifique sua conexão e recarregue.';
+  }
+}
+
+function initMSDashboard() {
+  document.getElementById('ms-loading').style.display   = 'none';
+  document.getElementById('ms-dashboard').style.display = 'block';
+  const meses = [...new Set(MS_ROWS.map(r=>r.mes))].sort();
+  const praca = MS_ROWS[0]?.loja ? (MS_ROWS[0].cidade || '—') : '—';
+  document.getElementById('ms-hdr-praca').textContent  = 'Praça';
+  document.getElementById('ms-hdr-period').textContent = monthLabel(meses[0]) + ' → ' + monthLabel(meses[meses.length-1]);
+  document.getElementById('ms-hdr-lojas').textContent  = [...new Set(MS_ROWS.map(r=>r.loja))].length + ' lojas';
+  buildMSMonthTabs(meses);
+  msCurrentMonth = 'ALL';
+  renderMSAll();
+}
+
+function buildMSMonthTabs(meses) {
+  const c = document.getElementById('ms-month-tabs');
+  c.innerHTML = '';
+  const mkTab = (val, lbl, active) => {
+    const b = document.createElement('button');
+    b.className = 'tab' + (active ? ' active' : '');
+    b.textContent = lbl;
+    b.onclick = () => {
+      msCurrentMonth = val;
+      c.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      b.classList.add('active');
+      renderMSAll();
+    };
+    return b;
+  };
+  c.appendChild(mkTab('ALL', 'Todos', true));
+  meses.forEach(m => c.appendChild(mkTab(m, monthLabel(m), false)));
+}
+
+function renderMSAll() {
+  renderMSKpis();
+  renderMSComp();
+  renderMSRanking();
+  renderMSCidade();
+  renderMSZeradas();
+  renderMSSim();
+  renderMSPlano();
+  renderMSWeekly();
+}
+
+// ─── MS S1: KPIs ──────────────────────────────────────────────────────────────
+function renderMSKpis() {
+  const rows = getMSRows();
+  const m = calcMSMetrics(rows);
+  const mes = getMSMonth();
+  const [y, mo] = mes ? mes.split('-').map(Number) : [0,0];
+  const diasDoMes = mes ? new Date(y, mo, 0).getDate() : 30;
+
+  // C6/dia: usa dia mais recente de ALL_ROWS do mês
+  let c6dia = 0, c6proj = 0;
+  if (ALL_ROWS.length && mes) {
+    const rowsMes = ALL_ROWS.filter(r => r.mes === mes && r.status === STATUS_PAGA);
+    const dates = [...new Set(rowsMes.map(r=>r.data).filter(Boolean))].sort();
+    const dias  = dates.length || 1;
+    const prodDig = rowsMes.reduce((s,r) => s+r.vlFin, 0);
+    c6dia  = prodDig / dias;
+    c6proj = c6dia * diasDoMes;
+  }
+
+  const hhiStatus = m.hhi === 0 ? '' : m.hhi < 1000 ? '🟢 Baixa' : m.hhi < 2500 ? '🟡 Moderada' : '🔴 Alta';
+  const msCls = m.msPA >= 20 ? 'good' : m.msPA >= 10 ? 'warn' : 'bad';
+
+  document.getElementById('ms-kpi-grid').innerHTML = `
+    <div class="kpi ${msCls}">
+      <div class="kpi-label">MS Público Alvo</div>
+      <div class="kpi-value">${m.msPA.toFixed(1)}%</div>
+      <div class="kpi-sub">C6 ${fmtM(m.prodC6)} / PA ${fmtM(m.finPA)}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Produção C6</div>
+      <div class="kpi-value">${fmtM(m.prodC6)}</div>
+      <div class="kpi-sub">Mercado PA: ${fmtM(m.finPA)}</div>
+    </div>
+    ${c6dia > 0 ? `
+    <div class="kpi good">
+      <div class="kpi-label">C6 / dia</div>
+      <div class="kpi-value">${fmtM(c6dia)}</div>
+      <div class="kpi-sub">Proj. mês: ${fmtM(c6proj)}</div>
+    </div>` : ''}
+    <div class="kpi ${m.inexpl > 0 ? 'bad' : 'good'}">
+      <div class="kpi-label">PA não explorado</div>
+      <div class="kpi-value">${fmtM(m.inexpl)}</div>
+      <div class="kpi-sub">${m.finPA > 0 ? (100 - m.msPA).toFixed(1) + '% do mercado PA' : ''}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Lojas ativas</div>
+      <div class="kpi-value">${m.ativas}<span style="font-size:1rem;color:var(--muted)">/${m.total}</span></div>
+      <div class="kpi-sub">${m.total - m.ativas} zeradas</div>
+    </div>
+    <div class="kpi ${m.hhi >= 2500 ? 'bad' : m.hhi >= 1000 ? 'warn' : 'good'}">
+      <div class="kpi-label">HHI Concentração</div>
+      <div class="kpi-value">${m.hhi > 0 ? m.hhi : '—'}</div>
+      <div class="kpi-sub">${hhiStatus}</div>
+    </div>`;
+}
+
+// ─── MS S2: COMPARATIVO MENSAL ────────────────────────────────────────────────
+function renderMSComp() {
+  const meses = [...new Set(MS_ROWS.map(r=>r.mes))].sort();
+  if (meses.length < 2) { document.getElementById('ms-sec-comp').style.display='none'; return; }
+  document.getElementById('ms-sec-comp').style.display='';
+  const data = meses.map(m => ({ mes: m, ...calcMSMetrics(MS_ROWS.filter(r=>r.mes===m)) }));
+  const rows = data.map((d, i) => {
+    const prev = i > 0 ? data[i-1] : null;
+    const msArrow = prev ? (d.msPA > prev.msPA ? `<span class="arrow-up">▲${(d.msPA-prev.msPA).toFixed(1)}pp</span>` : d.msPA < prev.msPA ? `<span class="arrow-down">▼${(prev.msPA-d.msPA).toFixed(1)}pp</span>` : '<span class="arrow-flat">—</span>') : '';
+    const col = d.msPA >= 20 ? 'var(--green)' : d.msPA >= 10 ? 'var(--yellow)' : 'var(--red)';
+    return `<tr>
+      <td style="font-weight:600">${monthLabel(d.mes)}</td>
+      <td class="mono">${fmtM(d.prodC6)}</td>
+      <td class="mono">${fmtM(d.finPA)}</td>
+      <td class="mono" style="color:${col};font-weight:700">${d.msPA.toFixed(1)}%</td>
+      <td>${msArrow}</td>
+      <td class="mono">${d.ativas}/${d.total}</td>
+      <td class="mono">${d.hhi > 0 ? d.hhi : '—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('ms-comp-table').innerHTML = `
+    <thead><tr><th>Mês</th><th>C6</th><th>Mercado PA</th><th>MS PA</th><th>Δ</th><th>Lojas ativas</th><th>HHI</th></tr></thead>
+    <tbody>${rows}</tbody>`;
+}
+
+// ─── MS S3: RANKING POR LOJA ──────────────────────────────────────────────────
+function renderMSRanking() {
+  const rows = getMSRows();
+  const mes  = getMSMonth();
+  const prevMes = mes ? prevMSMonth(mes) : null;
+  const rowsPrev = prevMes ? MS_ROWS.filter(r => r.mes === prevMes) : [];
+  const totalC6  = rows.reduce((s,r) => s + r.prodC6, 0);
+
+  const sorted = [...rows].sort((a,b) => b.prodC6 - a.prodC6);
+  document.getElementById('ms-ranking-body').innerHTML = sorted.map((r, i) => {
+    const pct  = totalC6 > 0 ? (r.prodC6/totalC6*100).toFixed(1) : '—';
+    const ms   = r.msPA;
+    const badgeCls = r.prodC6 === 0 ? 'ms-badge-gray' : ms >= 30 ? 'ms-badge-green' : ms >= 10 ? 'ms-badge-yellow' : 'ms-badge-red';
+    const badgeTxt = r.prodC6 === 0 ? '— Zerada' : ms.toFixed(1)+'%';
+    const prev = rowsPrev.find(p => p.loja === r.loja);
+    let vsAnt = '—';
+    if (prev) {
+      const delta = r.prodC6 - prev.prodC6;
+      vsAnt = delta > 0 ? `<span class="arrow-up">▲${fmtM(delta)}</span>` : delta < 0 ? `<span class="arrow-down">▼${fmtM(Math.abs(delta))}</span>` : '<span class="arrow-flat">=</span>';
+    } else if (r.prodC6 > 0) vsAnt = '<span style="color:var(--green);font-size:.75rem">NOVA</span>';
+    return `<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td><div class="loja-name">${r.loja}</div></td>
+      <td style="font-size:.82rem;color:var(--muted)">${r.cidade}</td>
+      <td class="mono">${r.prodC6 > 0 ? fmtM(r.prodC6) : '<span style="color:var(--muted)">—</span>'}</td>
+      <td class="mono">${r.finPA > 0 ? fmtM(r.finPA) : '—'}</td>
+      <td><span class="${badgeCls}">${badgeTxt}</span></td>
+      <td class="mono">${r.prodC6 > 0 ? pct+'%' : '—'}</td>
+      <td>${vsAnt}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── MS S4: POR CIDADE ────────────────────────────────────────────────────────
+function renderMSCidade() {
+  const rows = getMSRows();
+  const mes  = getMSMonth();
+  const prevMes  = mes ? prevMSMonth(mes) : null;
+  const rowsPrev = prevMes ? MS_ROWS.filter(r => r.mes === prevMes) : [];
+
+  const map = {};
+  rows.forEach(r => {
+    if (!map[r.cidade]) map[r.cidade] = { prodC6:0, finPA:0, ativas:0, total:0 };
+    map[r.cidade].prodC6 += r.prodC6;
+    map[r.cidade].finPA  += r.finPA;
+    map[r.cidade].total++;
+    if (r.prodC6 > 0) map[r.cidade].ativas++;
+  });
+  const prevMap = {};
+  rowsPrev.forEach(r => {
+    if (!prevMap[r.cidade]) prevMap[r.cidade] = { prodC6:0, finPA:0 };
+    prevMap[r.cidade].prodC6 += r.prodC6; prevMap[r.cidade].finPA += r.finPA;
+  });
+
+  const sorted = Object.entries(map).sort((a,b) => b[1].prodC6 - a[1].prodC6);
+  document.getElementById('ms-cidade-body').innerHTML = sorted.map(([cidade, d]) => {
+    const ms  = d.finPA > 0 ? d.prodC6/d.finPA*100 : 0;
+    const col = ms >= 20 ? 'var(--green)' : ms >= 10 ? 'var(--yellow)' : ms > 0 ? 'var(--red)' : 'var(--muted)';
+    const prev = prevMap[cidade];
+    const prevMS = prev && prev.finPA > 0 ? prev.prodC6/prev.finPA*100 : null;
+    let vsAnt = '—';
+    if (prevMS !== null) {
+      const delta = ms - prevMS;
+      vsAnt = delta > 0.1 ? `<span class="arrow-up">▲${delta.toFixed(1)}pp</span>` : delta < -0.1 ? `<span class="arrow-down">▼${Math.abs(delta).toFixed(1)}pp</span>` : '<span class="arrow-flat">=</span>';
+    }
+    return `<tr>
+      <td style="font-weight:600">${cidade}</td>
+      <td class="mono">${fmtM(d.prodC6)}</td>
+      <td class="mono">${fmtM(d.finPA)}</td>
+      <td style="font-weight:700;color:${col}">${ms > 0 ? ms.toFixed(1)+'%' : '—'}</td>
+      <td class="mono">${d.ativas}/${d.total}</td>
+      <td>${vsAnt}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── MS S5: LOJAS ZERADAS ─────────────────────────────────────────────────────
+function renderMSZeradas() {
+  const rows  = getMSRows();
+  const mes   = getMSMonth();
+  const prevMes  = mes ? prevMSMonth(mes) : null;
+  const rowsPrev = prevMes ? MS_ROWS.filter(r => r.mes === prevMes) : [];
+
+  const zeradas = rows.filter(r => r.prodC6 === 0 && r.finPA > 0)
+    .sort((a,b) => b.finPA - a.finPA);
+
+  const el = document.getElementById('ms-zeradas-content');
+  if (!zeradas.length) { el.innerHTML = '<div class="empty-state">Nenhuma loja zerada com PA no período.</div>'; return; }
+
+  el.innerHTML = zeradas.map(r => {
+    const prev = rowsPrev.find(p => p.loja === r.loja);
+    const sub  = prev && prev.prodC6 > 0
+      ? `Produziu ${fmtM(prev.prodC6)} em ${monthLabel(prevMes)} — desativou`
+      : prev ? 'Zerada também no mês anterior' : 'Sem histórico anterior';
+    return `<div class="oport-item">
+      <div class="oport-left">
+        <div class="oport-name">${r.loja}</div>
+        <div class="oport-city">${r.cidade} · ${sub}</div>
+      </div>
+      <div class="oport-right">
+        <div class="oport-val">${fmtM(r.finPA)}</div>
+        <div class="oport-sub">PA disponível</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── MS S6: SIMULAÇÃO ─────────────────────────────────────────────────────────
+function renderMSSim() {
+  const rows = getMSRows();
+  const pct  = Math.max(1, Math.min(100, parseFloat(document.getElementById('ms-sim-pct')?.value || 20))) / 100;
+
+  const totalC6Real = rows.reduce((s,r) => s + r.prodC6, 0);
+  const totalFinPA  = rows.reduce((s,r) => s + r.finPA,  0);
+  const totalSim    = rows.reduce((s,r) => s + r.finPA * pct, 0);
+  const msReal = totalFinPA > 0 ? totalC6Real/totalFinPA*100 : 0;
+  const msSim  = totalFinPA > 0 ? totalSim/totalFinPA*100 : 0;
+  const ganho  = totalSim - totalC6Real;
+
+  document.getElementById('ms-sim-summary').innerHTML = `
+    <div class="sim-stat"><div class="sim-stat-label">C6 Real</div><div class="sim-stat-val">${fmtM(totalC6Real)}</div></div>
+    <div class="sim-stat"><div class="sim-stat-label">C6 @${(pct*100).toFixed(0)}%</div><div class="sim-stat-val" style="color:var(--accent)">${fmtM(totalSim)}</div></div>
+    <div class="sim-stat"><div class="sim-stat-label">MS Real</div><div class="sim-stat-val">${msReal.toFixed(1)}%</div></div>
+    <div class="sim-stat"><div class="sim-stat-label">MS Simulado</div><div class="sim-stat-val" style="color:${msSim>msReal?'var(--green)':'var(--red)'}">${msSim.toFixed(1)}%</div></div>
+    <div class="sim-stat"><div class="sim-stat-label">Potencial adicional</div><div class="sim-stat-val" style="color:${ganho>0?'var(--green)':'var(--red)'}">${ganho>0?'+':''}${fmtM(ganho)}</div></div>`;
+
+  const sorted = [...rows].filter(r => r.finPA > 0).sort((a,b) => (b.finPA*pct - b.prodC6) - (a.finPA*pct - a.prodC6));
+  document.getElementById('ms-sim-body').innerHTML = sorted.map(r => {
+    const c6meta = r.finPA * pct;
+    const gap    = c6meta - r.prodC6;
+    const ms     = r.finPA > 0 ? r.prodC6/r.finPA*100 : 0;
+    const gapCol = gap > 0 ? 'var(--red)' : 'var(--green)';
+    return `<tr>
+      <td class="loja-name">${r.loja}</td>
+      <td class="mono">${fmtM(r.finPA)}</td>
+      <td class="mono">${r.prodC6>0?fmtM(r.prodC6):'—'}</td>
+      <td class="mono" style="color:${ms>=pct*100?'var(--green)':ms>0?'var(--yellow)':'var(--muted)'}">${ms>0?ms.toFixed(1)+'%':'—'}</td>
+      <td class="mono">${fmtM(c6meta)}</td>
+      <td class="mono" style="font-weight:700;color:${gapCol}">${gap>0?'+':'-'}${fmtM(Math.abs(gap))}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── MS S7: PLANO DE AÇÃO ─────────────────────────────────────────────────────
+function renderMSPlano() {
+  const rows  = getMSRows();
+  const mes   = getMSMonth();
+  const prevMes  = mes ? prevMSMonth(mes) : null;
+  const rowsPrev = prevMes ? MS_ROWS.filter(r => r.mes === prevMes) : [];
+  const m = calcMSMetrics(rows);
+  const acoes = [];
+  let p = 1;
+
+  // P1: lojas zeradas que antes produziam (desativadas)
+  const desativadas = rows.filter(r => r.prodC6 === 0 && r.finPA > 0)
+    .filter(r => rowsPrev.find(pr => pr.loja === r.loja && pr.prodC6 > 0))
+    .sort((a,b) => b.finPA - a.finPA).slice(0, 3);
+  desativadas.forEach(r => {
+    const prev = rowsPrev.find(pr => pr.loja === r.loja);
+    acoes.push({ p: p++, urgency: '🚨 URGENTE',
+      title: `Reativar ${r.loja}`,
+      desc:  `${r.cidade} — Produziu ${fmtM(prev.prodC6)} em ${monthLabel(prevMes)} e zerou este mês. PA disponível: ${fmtM(r.finPA)}.`,
+      meta:  `Recuperar ao menos 20% = ${fmtM(r.finPA * 0.2)}` });
+  });
+
+  // P2: maior oportunidade (zerando com alto PA)
+  const semHistorico = rows.filter(r => r.prodC6 === 0 && r.finPA > 200000 && !desativadas.find(d => d.loja === r.loja))
+    .sort((a,b) => b.finPA - a.finPA).slice(0, 2);
+  semHistorico.forEach(r => {
+    acoes.push({ p: p++, urgency: '⚠️ ATENÇÃO',
+      title: `Prospectar ${r.loja}`,
+      desc:  `${r.cidade} — Zerada com ${fmtM(r.finPA)} de mercado PA sem explorar.`,
+      meta:  `Meta @20% = ${fmtM(r.finPA * 0.2)}` });
+  });
+
+  // P3: MS muito baixo (<10%) em lojas com grande PA
+  const msBaixo = rows.filter(r => r.prodC6 > 0 && r.msPA < 10 && r.finPA > 300000)
+    .sort((a,b) => b.finPA - a.finPA).slice(0, 2);
+  msBaixo.forEach(r => {
+    acoes.push({ p: p++, urgency: '⚠️ ATENÇÃO',
+      title: `Escalar MS em ${r.loja}`,
+      desc:  `${r.cidade} — MS atual de ${r.msPA.toFixed(1)}% em PA de ${fmtM(r.finPA)}. Gap de ${fmtM(r.finPA*0.2 - r.prodC6)} para 20%.`,
+      meta:  `Elevar de ${r.msPA.toFixed(1)}% → 20%` });
+  });
+
+  // P4: HHI alto
+  if (m.hhi >= 2500) {
+    const top = [...rows].sort((a,b)=>b.prodC6-a.prodC6)[0];
+    acoes.push({ p: p++, urgency: '📊 INFO',
+      title: 'Diversificar base — concentração alta',
+      desc:  `HHI ${m.hhi} (alto). ${top?.loja} responde por ${(top?.prodC6/m.prodC6*100).toFixed(1)}% da produção. Risco de dependência.`,
+      meta:  'Ativar mais lojas para reduzir HHI abaixo de 1.500' });
+  }
+
+  if (!acoes.length) {
+    document.getElementById('ms-plano-list').innerHTML = '<div class="plano-item"><div class="plano-desc">✅ Nenhuma ação crítica identificada para este período.</div></div>';
+    return;
+  }
+  document.getElementById('ms-plano-list').innerHTML = acoes.map(a =>
+    `<div class="plano-item">
+      <div class="plano-p">${a.p}</div>
+      <div>
+        <div class="plano-title">${a.urgency} ${a.title}</div>
+        <div class="plano-desc">${a.desc}</div>
+        <div class="plano-meta">${a.meta}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ─── MS S8: RITMO SEMANAL ─────────────────────────────────────────────────────
+function renderMSWeekly() {
+  if (chartMSWeekly) { chartMSWeekly.destroy(); chartMSWeekly = null; }
+  const mes = getMSMonth();
+  const card = document.getElementById('ms-weekly-card');
+  const msgEl = document.getElementById('ms-weekly-msg');
+
+  if (!mes) return;
+  if (!ALL_ROWS.length) {
+    card.style.display = 'none'; msgEl.style.display = 'block';
+    msgEl.textContent = 'Para ver o ritmo semanal, carregue também os dados de Digitação.';
+    return;
+  }
+  card.style.display = ''; msgEl.style.display = 'none';
+
+  const rowsMes = ALL_ROWS.filter(r => r.mes === mes && r.status === STATUS_PAGA);
+  const semanas = [0, 0, 0, 0, 0];
+  rowsMes.forEach(r => {
+    if (!r.data) return;
+    const dia = parseInt(r.data.substring(8,10));
+    const idx = dia <= 7 ? 0 : dia <= 14 ? 1 : dia <= 21 ? 2 : dia <= 28 ? 3 : 4;
+    semanas[idx] += r.vlFin;
+  });
+
+  // Remove semanas futuras (sem dados)
+  let lastSem = 3;
+  for (let i = 4; i >= 0; i--) { if (semanas[i] > 0) { lastSem = i; break; } }
+  const labels = ['Sem 1\n(1-7)', 'Sem 2\n(8-14)', 'Sem 3\n(15-21)', 'Sem 4\n(22-28)', 'Sem 5\n(29+)'].slice(0, lastSem + 1);
+  const dados  = semanas.slice(0, lastSem + 1);
+  const media  = dados.filter(v=>v>0).reduce((s,v)=>s+v,0) / Math.max(1, dados.filter(v=>v>0).length);
+
+  // Meta semanal via METAS
+  const metaMes = METAS[mes];
+  const metaSem = metaMes ? metaMes.prod / 4 : null;
+
+  chartMSWeekly = new Chart(document.getElementById('chart-ms-weekly'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'C6 na semana', data: dados, backgroundColor: dados.map(v => v >= (metaSem||media) ? '#f59e0b' : 'rgba(245,158,11,.45)'), borderRadius: 6 },
+        ...(metaSem ? [{ label: 'Meta semanal ref.', data: labels.map(()=>metaSem), type:'line', borderColor:'#22c55e', borderDash:[5,4], borderWidth:2, pointRadius:0, fill:false }] : [])
+      ]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color:'#94a3b8', font:{size:11} } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label+': R$ '+fmt(ctx.parsed.y) } } },
+      scales: {
+        x: { ticks:{ color:'#94a3b8', font:{size:11} }, grid:{ color:'rgba(255,255,255,.05)' } },
+        y: { ticks:{ color:'#94a3b8', callback: v=>'R$'+fmt(v) }, grid:{ color:'rgba(255,255,255,.05)' } }
+      }
+    }
+  });
+}
+
 // ─── FORMATTERS ───────────────────────────────────────────────────────────────
 function fmt(n) {
   if (isNaN(n)||n===null) return '—';
@@ -1504,6 +2068,131 @@ function fmtM(n) {
 }
 </script>
 
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     MARKET SHARE
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div id="ms-wrapper" style="display:none">
+
+  <!-- MS Loading -->
+  <div id="ms-loading">
+    <div class="upload-box" style="cursor:default;border-style:solid">
+      <div class="upload-icon" id="ms-loading-icon">⏳</div>
+      <h2 id="ms-loading-msg" style="font-size:1.1rem">Carregando Market Share...</h2>
+      <p id="ms-loading-sub" style="color:var(--muted);font-size:.88rem"></p>
+    </div>
+  </div>
+
+  <!-- MS Dashboard -->
+  <div id="ms-dashboard" style="display:none">
+    <header>
+      <div>
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.25rem;">
+          <h1>Market Share</h1>
+          <span class="praca-tag" id="ms-hdr-praca">—</span>
+        </div>
+        <div style="display:flex;gap:.4rem;">
+          <span class="period-tag" id="ms-hdr-period">—</span>
+          <span class="period-tag" id="ms-hdr-lojas">—</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="period-tag" id="ms-hdr-updated" style="display:none"></span>
+      </div>
+    </header>
+
+    <div class="month-tabs" id="ms-month-tabs"></div>
+
+    <main>
+      <!-- S1: KPIs -->
+      <div class="section">
+        <div class="section-title">Indicadores do período</div>
+        <div class="kpi-grid" id="ms-kpi-grid"></div>
+      </div>
+
+      <!-- S2: Comparativo mensal -->
+      <div class="section" id="ms-sec-comp">
+        <div class="section-title">Comparativo mensal — evolução proporcional</div>
+        <div class="table-wrap">
+          <table id="ms-comp-table"></table>
+        </div>
+      </div>
+
+      <!-- S3: Ranking por loja -->
+      <div class="section">
+        <div class="section-title">Ranking por loja — Market Share PA</div>
+        <div class="table-wrap">
+          <table id="ms-ranking-table">
+            <thead><tr>
+              <th>#</th><th>Loja</th><th>Cidade</th>
+              <th>C6</th><th>Mercado PA</th><th>MS PA</th>
+              <th>% Praça</th><th>vs mês ant.</th>
+            </tr></thead>
+            <tbody id="ms-ranking-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- S4: Por cidade -->
+      <div class="section">
+        <div class="section-title">Análise por cidade</div>
+        <div class="table-wrap">
+          <table id="ms-cidade-table">
+            <thead><tr>
+              <th>Cidade</th><th>C6</th><th>Mercado PA</th>
+              <th>MS PA</th><th>Lojas ativas</th><th>vs mês ant.</th>
+            </tr></thead>
+            <tbody id="ms-cidade-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- S5: Lojas zeradas -->
+      <div class="section">
+        <div class="section-title">🚨 Oportunidades — lojas zeradas com mercado PA</div>
+        <div id="ms-zeradas-content" style="display:flex;flex-direction:column;gap:.5rem"></div>
+      </div>
+
+      <!-- S6: Simulação -->
+      <div class="section">
+        <div class="section-title">🎯 Simulação — e se atingíssemos X% de MS em cada loja?</div>
+        <div class="sim-input-row">
+          <span style="font-size:.9rem;color:var(--muted)">Meta simulada:</span>
+          <input class="sim-input" id="ms-sim-pct" type="number" value="20" min="1" max="100" oninput="renderMSSim()">
+          <span style="font-size:.9rem;color:var(--muted)">%</span>
+        </div>
+        <div class="sim-summary" id="ms-sim-summary"></div>
+        <div class="table-wrap">
+          <table id="ms-sim-table">
+            <thead><tr>
+              <th>Loja</th><th>Mercado PA</th><th>C6 Real</th>
+              <th>MS Real</th><th>C6 @Meta</th><th>GAP</th>
+            </tr></thead>
+            <tbody id="ms-sim-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- S7: Plano de ação -->
+      <div class="section">
+        <div class="section-title">📋 Plano de ação</div>
+        <div class="plano-list" id="ms-plano-list"></div>
+      </div>
+
+      <!-- S8: Ritmo semanal -->
+      <div class="section">
+        <div class="section-title">📅 Ritmo semanal — produção C6 no mês</div>
+        <div id="ms-weekly-msg" style="display:none" class="empty-state"></div>
+        <div class="chart-card" id="ms-weekly-card">
+          <div style="height:240px;position:relative">
+            <canvas id="chart-ms-weekly"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- /ms-dashboard -->
+</div><!-- /ms-wrapper -->
+
 <!-- BOTÃO ADMIN FLUTUANTE (visível mesmo na tela de loading) -->
 <button id="admin-fab"
   style="display:none;position:fixed;bottom:1.5rem;right:1.5rem;z-index:200;background:var(--accent);color:#000;font-weight:700;border:none;border-radius:50px;padding:.65rem 1.2rem;cursor:pointer;font-size:.88rem;box-shadow:0 4px 16px rgba(0,0,0,.4);"
@@ -1513,10 +2202,22 @@ function fmtM(n) {
 
 <!-- PAINEL ADMIN -->
 <div id="admin-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center;">
-  <div style="background:var(--card);border-radius:16px;padding:2rem;width:min(460px,92vw);position:relative;">
+  <div style="background:var(--card);border-radius:16px;padding:2rem;width:min(480px,92vw);position:relative;">
     <button onclick="document.getElementById('admin-overlay').style.display='none'"
       style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1;">✕</button>
     <h2 style="font-size:1.1rem;margin-bottom:1.25rem;">⚙ Atualizar dados da praça</h2>
+
+    <label style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Tipo de relatório</label>
+    <div style="display:flex;gap:.5rem;margin:.4rem 0 1rem;">
+      <button id="admin-type-dig" onclick="setAdminType('dig')"
+        style="flex:1;padding:.5rem;background:var(--accent);color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-size:.85rem;">
+        📊 Digitação
+      </button>
+      <button id="admin-type-ms" onclick="setAdminType('ms')"
+        style="flex:1;padding:.5rem;background:var(--card2);color:var(--muted);font-weight:700;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:.85rem;">
+        🏪 Market Share
+      </button>
+    </div>
 
     <label style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Senha</label>
     <input id="admin-pwd" type="password" placeholder="Senha de administrador"
