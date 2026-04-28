@@ -977,6 +977,25 @@ function renderMetas() {
     ? `<span style="font-size:.9rem;font-weight:600;color:${metaColor(d.projPond)}">Proj. ${d.projPond.toFixed(1)}%</span>`
     : '';
 
+  // Quanto falta para 120% e 150% da meta ponderada
+  // Mantém seguro atual fixo e calcula produção necessária
+  const mkAlvo = (alvo) => {
+    const gap = alvo - d.ponderada;
+    if (gap <= 0) return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem .5rem;background:rgba(34,197,94,.08);border-radius:6px;border:1px solid rgba(34,197,94,.2)">
+      <span style="font-size:.72rem;color:var(--muted)">Para ${alvo}%</span>
+      <span style="font-size:.8rem;font-weight:700;color:var(--green)">✅ Superado</span>
+    </div>`;
+    const prodNecessaria = Math.max(0, ((alvo - d.pctSeg * PESO_SEG) / PESO_PROD / 100 * d.meta.prod) - d.prod);
+    const cor = alvo <= 120 ? 'var(--yellow)' : 'var(--muted)';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem .5rem;background:rgba(148,163,184,.05);border-radius:6px;border:1px solid var(--border)">
+      <span style="font-size:.72rem;color:var(--muted)">Para ${alvo}%</span>
+      <div style="text-align:right">
+        <div style="font-size:.8rem;font-weight:700;color:${cor}">+${gap.toFixed(1)} p.p.</div>
+        <div style="font-size:.68rem;color:var(--muted)">${fmtM(prodNecessaria)} em prod.</div>
+      </div>
+    </div>`;
+  };
+
   el.innerHTML = `<div class="meta-grid">
     ${mkCard('Produção (peso 70%)', d.prod, d.meta.prod, d.pctProd, d.projPctProd, d.isPartial)}
     ${mkCard('Seguro (peso 30%)',   d.seg,  d.meta.seg,  d.pctSeg,  d.projPctSeg,  d.isPartial)}
@@ -988,6 +1007,10 @@ function renderMetas() {
         (${d.pctProd.toFixed(1)}% × 70%) + (${d.pctSeg.toFixed(1)}% × 30%)
       </div>
       <div class="meta-pond-sub" style="margin-top:.3rem">${d.ponderada >= 100 ? '✅ Meta atingida' : d.ponderada >= 80 ? '⚠️ Em risco' : '🚨 Abaixo da meta'}</div>
+      <div style="margin-top:.75rem;display:flex;flex-direction:column;gap:.4rem">
+        ${mkAlvo(120)}
+        ${mkAlvo(150)}
+      </div>
     </div>
   </div>`;
 }
