@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BI Digitação — Acompanhamento Veículos</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a; --card: #1e293b; --card2: #263347;
+    --accent: #f59e0b; --accent2: #fbbf24;
+    --green: #22c55e; --yellow: #f59e0b; --red: #ef4444;
+    --text: #f1f5f9; --muted: #94a3b8; --border: #334155;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+  /* UPLOAD */
+  #upload-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; }
+  .upload-box { background: var(--card); border: 2px dashed var(--border); border-radius: 16px; padding: 3rem 4rem; text-align: center; max-width: 560px; width: 100%; cursor: pointer; transition: border-color .2s; }
+  .upload-box:hover { border-color: var(--accent); }
+  .upload-box h2 { font-size: 1.4rem; margin-bottom: .5rem; }
+  .upload-box p { color: var(--muted); margin-bottom: 1.5rem; font-size: .9rem; line-height: 1.5; }
+  .upload-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .btn { background: var(--accent); color: #000; font-weight: 700; border: none; border-radius: 8px; padding: .65rem 1.5rem; cursor: pointer; font-size: .9rem; transition: background .15s; }
+  .btn:hover { background: var(--accent2); }
+  #file-input { display: none; }
+  .upload-hint { margin-top: 1rem; color: var(--muted); font-size: .8rem; }
+
+  /* DASHBOARD */
+  #dashboard { display: none; }
+  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; position: sticky; top: 0; z-index: 100; }
+  header h1 { font-size: 1.1rem; font-weight: 700; }
+  header .praca-tag { background: var(--accent); color: #000; font-weight: 700; font-size: .75rem; padding: .25rem .6rem; border-radius: 20px; }
+  header .period-tag { background: var(--card2); color: var(--muted); font-size: .75rem; padding: .25rem .6rem; border-radius: 20px; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: .75rem; }
+  .reload-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: .35rem .75rem; cursor: pointer; font-size: .8rem; }
+  .reload-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* MONTH TABS */
+  .month-tabs { display: flex; gap: .5rem; padding: 1rem 1.5rem .5rem; flex-wrap: wrap; }
+  .tab { background: var(--card); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: .45rem 1.1rem; cursor: pointer; font-size: .85rem; font-weight: 600; transition: all .15s; }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #000; }
+  .tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+
+  /* MAIN */
+  main { padding: 0 1.5rem 3rem; }
+  .section { margin-top: 1.5rem; }
+  .section-title { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .75rem; }
+
+  /* KPI GRID */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .75rem; }
+  .kpi { background: var(--card); border-radius: 12px; padding: 1rem 1.1rem; border-left: 3px solid var(--border); }
+  .kpi.good { border-color: var(--green); }
+  .kpi.warn { border-color: var(--yellow); }
+  .kpi.bad { border-color: var(--red); }
+  .kpi-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .3rem; }
+  .kpi-value { font-size: 1.55rem; font-weight: 800; line-height: 1; }
+  .kpi-sub { font-size: .72rem; color: var(--muted); margin-top: .25rem; }
+  .kpi-delta { font-size: .72rem; font-weight: 600; margin-top: .15rem; }
+  .delta-up { color: var(--green); }
+  .delta-down { color: var(--red); }
+
+  /* TABLES */
+  .table-wrap { background: var(--card); border-radius: 12px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: var(--card2); text-align: left; padding: .65rem 1rem; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
+  td { padding: .6rem 1rem; border-top: 1px solid var(--border); font-size: .85rem; vertical-align: middle; white-space: nowrap; }
+  tr:hover td { background: rgba(255,255,255,.03); }
+  .loja-name { font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* SEMÁFORO */
+  .badge { display: inline-flex; align-items: center; gap: .3rem; font-weight: 700; font-size: .82rem; padding: .2rem .55rem; border-radius: 20px; }
+  .badge-green { background: rgba(34,197,94,.15); color: var(--green); }
+  .badge-yellow { background: rgba(245,158,11,.15); color: var(--yellow); }
+  .badge-red { background: rgba(239,68,68,.15); color: var(--red); }
+  .badge-gray { background: rgba(148,163,184,.1); color: var(--muted); }
+
+  /* TWO COL */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+  .col-panel { background: var(--card); border-radius: 12px; padding: 1.1rem; }
+  .col-panel h3 { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .75rem; }
+  .col-panel.green-panel h3 { color: var(--green); }
+  .col-panel.red-panel h3 { color: var(--red); }
+  .loja-row { display: flex; justify-content: space-between; align-items: flex-start; padding: .5rem 0; border-top: 1px solid var(--border); gap: .5rem; }
+  .loja-row:first-of-type { border-top: none; }
+  .loja-row-name { font-weight: 600; font-size: .85rem; }
+  .loja-row-sub { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+  .loja-row-right { text-align: right; flex-shrink: 0; }
+  .loja-row-aprov { font-weight: 800; font-size: 1rem; }
+
+  /* COMPARATIVO */
+  .comp-table th, .comp-table td { text-align: right; }
+  .comp-table th:first-child, .comp-table td:first-child { text-align: left; }
+  .comp-table tr.total-row td { font-weight: 700; color: var(--accent); }
+  .arrow-up { color: var(--green); }
+  .arrow-down { color: var(--red); }
+  .arrow-flat { color: var(--muted); }
+
+  /* SEGUROS */
+  .seguro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  @media (max-width: 500px) { .seguro-grid { grid-template-columns: 1fr; } }
+  .seguro-card { background: var(--card); border-radius: 12px; padding: 1.2rem; }
+  .seguro-card h3 { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .5rem; }
+  .seguro-pct { font-size: 2.2rem; font-weight: 800; line-height: 1; }
+  .seguro-sub { font-size: .78rem; color: var(--muted); margin-top: .3rem; }
+  .progress-bar-bg { background: var(--border); border-radius: 99px; height: 6px; margin-top: .6rem; overflow: hidden; }
+  .progress-bar { height: 100%; border-radius: 99px; background: var(--accent); transition: width .5s; }
+
+  /* PLANO DE AÇÃO */
+  .plano-list { display: flex; flex-direction: column; gap: .6rem; }
+  .plano-item { background: var(--card); border-radius: 10px; padding: .9rem 1.1rem; display: flex; gap: .9rem; align-items: flex-start; }
+  .plano-p { font-size: .9rem; font-weight: 800; color: var(--accent); min-width: 28px; }
+  .plano-title { font-weight: 700; font-size: .88rem; margin-bottom: .2rem; }
+  .plano-desc { font-size: .8rem; color: var(--muted); line-height: 1.45; }
+  .plano-meta { margin-top: .3rem; font-size: .78rem; color: var(--green); font-weight: 600; }
+
+  /* CHART */
+  .chart-card { background: var(--card); border-radius: 12px; padding: 1.1rem; }
+  .chart-title { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .75rem; }
+
+  .empty-state { color: var(--muted); text-align: center; padding: 2rem; font-size: .9rem; }
+  .mono { font-variant-numeric: tabular-nums; }
+
+  /* FUNIL */
+  .funil-wrap { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: .5rem; align-items: center; background: var(--card); border-radius: 12px; padding: 1.2rem; }
+  .funil-node { text-align: center; padding: .75rem .5rem; }
+  .funil-node-label { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .3rem; }
+  .funil-node-val { font-size: 2rem; font-weight: 800; line-height: 1; }
+  .funil-node-sub { font-size: .78rem; color: var(--muted); margin-top: .2rem; }
+  .funil-arrow { color: var(--border); font-size: 1.4rem; text-align: center; }
+  .funil-leak { display: flex; gap: 1rem; margin-top: .75rem; flex-wrap: wrap; }
+  .funil-leak-item { background: var(--card2); border-radius: 8px; padding: .5rem .85rem; font-size: .8rem; }
+
+  /* APROVADAS EM ABERTO */
+  .aprov-banner { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3); border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: .75rem; display: flex; gap: 2rem; flex-wrap: wrap; align-items: center; }
+  .aprov-banner-stat { }
+  .aprov-banner-stat-label { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .aprov-banner-stat-val { font-size: 1.5rem; font-weight: 800; color: var(--red); }
+  .aprov-banner-note { font-size: .82rem; color: var(--muted); flex: 1; min-width: 200px; }
+
+  /* CONCENTRAÇÃO HHI */
+  .conc-wrap { display: grid; grid-template-columns: 160px 1fr; gap: 1rem; align-items: start; }
+  @media (max-width: 600px) { .conc-wrap { grid-template-columns: 1fr; } }
+  .hhi-card { background: var(--card); border-radius: 12px; padding: 1.2rem; text-align: center; }
+  .hhi-val { font-size: 2.4rem; font-weight: 800; line-height: 1; }
+  .hhi-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: .25rem; }
+  .hhi-status { font-size: .82rem; font-weight: 700; margin-top: .5rem; }
+  .hhi-ref { font-size: .7rem; color: var(--muted); margin-top: .75rem; line-height: 1.4; }
+  .conc-bar-bg { background: var(--border); border-radius: 4px; height: 7px; margin-top: 5px; overflow: hidden; }
+  .conc-bar { height: 100%; border-radius: 4px; background: var(--accent); }
+
+  /* MOMENTUM */
+  .momentum-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: .75rem; }
+  .momentum-card { background: var(--card); border-radius: 12px; padding: 1rem 1.1rem; }
+  .momentum-card-label { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .6rem; }
+  .momentum-row { display: flex; justify-content: space-between; font-size: .84rem; margin-bottom: .2rem; }
+  .momentum-delta { font-size: .82rem; font-weight: 700; margin-top: .4rem; border-top: 1px solid var(--border); padding-top: .35rem; }
+
+  /* PERFIL VEÍCULO */
+  .veiculo-bars { background: var(--card); border-radius: 12px; padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: .6rem; }
+  .vei-row { display: flex; align-items: center; gap: .75rem; }
+  .vei-label { font-size: .8rem; color: var(--muted); min-width: 110px; }
+  .vei-bar-bg { flex: 1; background: var(--border); border-radius: 4px; height: 8px; overflow: hidden; }
+  .vei-bar { height: 100%; border-radius: 4px; }
+  .vei-count { font-size: .82rem; font-weight: 700; min-width: 28px; text-align: right; }
+  .vei-sub { font-size: .75rem; color: var(--muted); min-width: 60px; text-align: right; }
+
+  /* SEGUROS POR LOJA */
+  .mini-bar-bg { background: var(--border); border-radius: 3px; height: 5px; margin-top: 3px; overflow: hidden; }
+  .mini-bar { height: 100%; border-radius: 3px; }
+  .seg-loja-table th, .seg-loja-table td { text-align: right; }
+  .seg-loja-table th:first-child, .seg-loja-table td:first-child { text-align: left; }
+
+  /* METAS */
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .75rem; }
+  .meta-card { background: var(--card); border-radius: 12px; padding: 1.1rem 1.2rem; }
+  .meta-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .6rem; }
+  .meta-card-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  .meta-card-month { font-size: .72rem; font-weight: 700; color: var(--accent); }
+  .meta-card-val { font-size: 1.55rem; font-weight: 800; line-height: 1; }
+  .meta-card-target { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+  .meta-prog-bg { background: var(--border); border-radius: 99px; height: 7px; margin: .6rem 0 .35rem; overflow: hidden; }
+  .meta-prog { height: 100%; border-radius: 99px; transition: width .4s; }
+  .meta-pct-row { display: flex; justify-content: space-between; align-items: center; }
+  .meta-pct-val { font-size: 1.1rem; font-weight: 800; }
+  .meta-proj-badge { font-size: .72rem; font-weight: 600; padding: .15rem .5rem; border-radius: 20px; background: rgba(148,163,184,.12); color: var(--muted); }
+  .meta-proj-badge.proj-warn { background: rgba(245,158,11,.12); color: var(--yellow); }
+  .meta-proj-badge.proj-good { background: rgba(34,197,94,.12); color: var(--green); }
+  .meta-proj-badge.proj-bad  { background: rgba(239,68,68,.12);  color: var(--red); }
+
+  .meta-pond-card { background: linear-gradient(135deg, var(--card) 0%, var(--card2) 100%); border-radius: 12px; padding: 1.2rem 1.4rem; border: 1px solid var(--border); }
+  .meta-pond-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: .3rem; }
+  .meta-pond-val { font-size: 2.8rem; font-weight: 900; line-height: 1; }
+  .meta-pond-sub { font-size: .78rem; color: var(--muted); margin-top: .25rem; }
+  .meta-pond-formula { font-size: .72rem; color: var(--muted); margin-top: .5rem; }
+
+  .meta-table th, .meta-table td { text-align: right; }
+  .meta-table th:first-child, .meta-table td:first-child { text-align: left; }
+  .meta-table td.pct-cell { font-weight: 700; }
+  .meta-gap { font-size: .75rem; color: var(--red); }
+  .meta-gap.ok { color: var(--green); }
+</style>
+</head>
+<body>
+
+<!-- TELA DE LOADING / SEM DADOS -->
+<div id="upload-screen" style="display:flex">
+  <div class="upload-box" style="cursor:default;border-style:solid">
+    <div class="upload-icon" id="loading-icon">⏳</div>
+    <h2 id="loading-msg" style="font-size:1.1rem">Carregando dados...</h2>
+    <p id="loading-sub" style="color:var(--muted);font-size:.88rem"></p>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <header>
+    <div>
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.25rem;">
+        <h1>Digitação Analítica</h1>
+        <span class="praca-tag" id="hdr-praca">—</span>
+      </div>
+      <div style="display:flex;gap:.4rem;">
+        <span class="period-tag" id="hdr-period">—</span>
+        <span class="period-tag" id="hdr-rows">—</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="period-tag" id="hdr-updated" style="display:none"></span>
+      <button class="reload-btn" id="admin-open-btn" style="display:none" onclick="document.getElementById('admin-overlay').style.display='flex'">⚙ Atualizar dados</button>
+    </div>
+  </header>
+
+  <div class="month-tabs" id="month-tabs"></div>
+
+  <main>
+    <!-- KPIs -->
+    <div class="section">
+      <div class="section-title">Indicadores do período</div>
+      <div class="kpi-grid" id="kpi-grid"></div>
+    </div>
+
+    <!-- METAS -->
+    <div class="section">
+      <div class="section-title">🎯 Atingimento de metas</div>
+      <div id="metas-content"></div>
+    </div>
+
+    <!-- FUNIL -->
+    <div class="section">
+      <div class="section-title">Funil de conversão</div>
+      <div id="funil-content"></div>
+      <div class="funil-leak" id="funil-leak" style="margin-top:.75rem"></div>
+    </div>
+
+    <!-- APROVADAS EM ABERTO -->
+    <div class="section">
+      <div class="section-title">⚡ Oportunidades — aprovadas pela C6 não pagas</div>
+      <div id="aprovadas-content"></div>
+    </div>
+
+    <!-- COMPARATIVO MENSAL -->
+    <div class="section" id="sec-comp">
+      <div class="section-title">Comparativo mensal — ritmo diário proporcional</div>
+      <div class="table-wrap">
+        <table class="comp-table" id="comp-table"></table>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW -->
+    <div class="section two-col">
+      <div class="chart-card">
+        <div class="chart-title">R$ Pago por dia — evolução mensal</div>
+        <canvas id="chart-producao" height="160"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Aproveitamento % por mês</div>
+        <canvas id="chart-aprov" height="160"></canvas>
+      </div>
+    </div>
+
+    <!-- RANKING POR LOJA -->
+    <div class="section">
+      <div class="section-title">Ranking por loja — período selecionado</div>
+      <div class="table-wrap">
+        <table id="ranking-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Loja</th>
+              <th>Pagas</th>
+              <th>Aprovadas¹</th>
+              <th>Aproveitamento</th>
+              <th>R$ Pago</th>
+              <th>R$ Perdido</th>
+              <th>% Praça</th>
+              <th>Ticket Médio</th>
+            </tr>
+          </thead>
+          <tbody id="ranking-body"></tbody>
+        </table>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:.5rem;">¹ "Aprovada" = C6 aprovou mas proposta foi para concorrência (não paga)</p>
+    </div>
+
+    <!-- CONCENTRAÇÃO -->
+    <div class="section">
+      <div class="section-title">Concentração da praça — HHI</div>
+      <div id="concentracao-content"></div>
+    </div>
+
+    <!-- MOMENTUM -->
+    <div class="section">
+      <div class="section-title">Momentum — últimos 14 dias vs. período anterior</div>
+      <div id="momentum-content"></div>
+    </div>
+
+    <!-- CONVERSÃO -->
+    <div class="section">
+      <div class="section-title">Diagnóstico de conversão — quem converte vs quem perde</div>
+      <div class="two-col">
+        <div class="col-panel green-panel">
+          <h3>✅ Convertem (aproveitamento ≥ 70%)</h3>
+          <div id="conv-verde"></div>
+        </div>
+        <div class="col-panel red-panel">
+          <h3>🚨 Perdem (aproveitamento &lt; 50%)</h3>
+          <div id="conv-vermelho"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PERFIL DO VEÍCULO -->
+    <div class="section">
+      <div class="section-title">Perfil do veículo — distribuição por idade</div>
+      <div id="veiculo-content"></div>
+    </div>
+
+    <!-- SEGUROS GLOBAIS -->
+    <div class="section">
+      <div class="section-title">Seguros — sobre propostas pagas</div>
+      <div class="seguro-grid" id="seguro-grid"></div>
+    </div>
+
+    <!-- SEGUROS POR LOJA -->
+    <div class="section">
+      <div class="section-title">Seguros por loja</div>
+      <div id="seguros-loja-content"></div>
+    </div>
+
+    <!-- PLANO DE AÇÃO -->
+    <div class="section">
+      <div class="section-title">⚡ Plano de ação gerado automaticamente</div>
+      <div class="plano-list" id="plano-list"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+let ALL_ROWS = [];
+let currentMonth = 'ALL';
+
+// ─── METAS (configurar por praça / período) ───────────────────────────────────
+const METAS = {
+  '2026-04': { prod: 1334393, seg: 31989 },
+  '2026-03': { prod: 1414514, seg: 34789 },
+  '2026-02': { prod: 1155940, seg: 30602 },
+};
+const PESO_PROD = 0.70, PESO_SEG = 0.30;
+
+// Column positions (0-indexed) — fixed for this Looker export format
+const COL = { id:0, data:1, lojista:3, gp:4, gn:5, status:6, fase:7,
+              vlFin:22, vlRetorno:26, segPrest:28, idadeVei:29, usuario:30, filial:32, segAP:33 };
+
+// Status taxonomy
+const STATUS_PAGA     = 'PROPOSTA PAGA';
+const STATUS_APROVADA = 'PROPOSTA APROVADA'; // aprovada mas perdida p/ concorrência
+const STATUS_REPROV   = 'PROPOSTA REPROVADA';
+const STATUS_REPROV2  = 'PROPOSTA REPROVADA APÓS CRÉDITO';
+const STATUS_ANALISE  = 'EM ANÁLISE';
+const STATUS_CANCEL   = 'CONTRATO CANCELADO';
+
+// ─── CSV PARSER ───────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    // Data rows start with a 7-digit proposal ID
+    if (!/^\d{6,8},/.test(line)) continue;
+    const cols = splitCSVLine(line);
+    if (cols.length < 30) continue;
+    rows.push(cols);
+  }
+  return rows;
+}
+
+function splitCSVLine(line) {
+  const cols = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+    else cur += c;
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
+function parseMoney(s) {
+  if (!s) return 0;
+  // CSV values use US format: "R$ 62,192.82" (comma=thousands, period=decimal)
+  return parseFloat(s.replace(/R\$\s*/,'').replace(/,/g,'').trim()) || 0;
+}
+
+function cleanLoja(raw) {
+  // Format: "12345 - NOME DA LOJA - 00000000000000"
+  const parts = raw.split(' - ');
+  if (parts.length >= 2) return parts.slice(1, -1).join(' - ') || parts[1];
+  return raw;
+}
+
+function rowToObj(cols) {
+  return {
+    id:      cols[COL.id],
+    data:    cols[COL.data],
+    mes:     cols[COL.data] ? cols[COL.data].substring(0,7) : '',
+    lojista: cleanLoja(cols[COL.lojista] || ''),
+    gp:      cols[COL.gp] || '',
+    gn:      cols[COL.gn] || '',
+    status:  cols[COL.status] || '',
+    fase:    cols[COL.fase] || '',
+    vlFin:   parseMoney(cols[COL.vlFin]),
+    vlRet:   parseMoney(cols[COL.vlRetorno]),
+    segPrest:parseMoney(cols[COL.segPrest]),
+    segAP:   parseMoney(cols[COL.segAP]),
+    filial:  cols[COL.filial] || '',
+    usuario: cols[COL.usuario] || '',
+  };
+}
+
+// ─── AUTO-LOAD DO SERVIDOR ────────────────────────────────────────────────────
+async function autoLoad() {
+  try {
+    const res = await fetch('/data');
+    if (!res.ok) {
+      showLoadMsg('📭', 'Dados ainda não disponíveis.', 'Aguarde a próxima atualização pelo administrador.');
+      return;
+    }
+    const text = await res.text();
+    ALL_ROWS = parseCSV(text).map(rowToObj);
+    if (!ALL_ROWS.length) {
+      showLoadMsg('⚠️', 'Arquivo de dados vazio.', 'Solicite uma nova atualização ao administrador.');
+      return;
+    }
+    // Busca data da última atualização
+    fetch('/status').then(r=>r.json()).then(s => {
+      if (s.updatedAt) {
+        const d = new Date(s.updatedAt);
+        document.getElementById('hdr-updated').textContent =
+          'Atualizado: ' + d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+        document.getElementById('hdr-updated').style.display = '';
+      }
+    }).catch(()=>{});
+    initDashboard();
+  } catch {
+    showLoadMsg('⚠️', 'Erro de conexão.', 'Verifique sua internet e recarregue a página.');
+  }
+}
+
+function showLoadMsg(icon, msg, sub) {
+  document.getElementById('loading-icon').textContent = icon;
+  document.getElementById('loading-msg').textContent  = msg;
+  document.getElementById('loading-sub').textContent  = sub;
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const isAdmin = new URLSearchParams(location.search).has('admin');
+  if (isAdmin) document.getElementById('admin-open-btn').style.display = '';
+  autoLoad();
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function initDashboard() {
+  document.getElementById('upload-screen').style.display  = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+
+  // Header info
+  const praca = ALL_ROWS[0]?.filial?.replace(' - P','') || '—';
+  const dates  = ALL_ROWS.map(r=>r.data).filter(Boolean).sort();
+  document.getElementById('hdr-praca').textContent  = praca;
+  document.getElementById('hdr-period').textContent = `${dates[0]} → ${dates[dates.length-1]}`;
+  document.getElementById('hdr-rows').textContent   = `${ALL_ROWS.length} registros`;
+
+  // Month tabs
+  buildMonthTabs();
+  currentMonth = 'ALL';
+  renderAll();
+}
+
+function buildMonthTabs() {
+  const months = [...new Set(ALL_ROWS.map(r=>r.mes).filter(Boolean))].sort();
+  const container = document.getElementById('month-tabs');
+  container.innerHTML = '';
+  const allTab = makeTab('ALL', 'Todos os meses');
+  container.appendChild(allTab);
+  for (const m of months) {
+    container.appendChild(makeTab(m, monthLabel(m)));
+  }
+}
+
+function makeTab(val, label) {
+  const btn = document.createElement('button');
+  btn.className = 'tab' + (val === currentMonth ? ' active' : '');
+  btn.textContent = label;
+  btn.onclick = () => { currentMonth = val; document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active'); renderAll(); };
+  return btn;
+}
+
+// ─── FILTER ───────────────────────────────────────────────────────────────────
+function getRows() {
+  if (currentMonth === 'ALL') return ALL_ROWS;
+  return ALL_ROWS.filter(r => r.mes === currentMonth);
+}
+
+// ─── METRICS ──────────────────────────────────────────────────────────────────
+function calcMetrics(rows) {
+  const pagas     = rows.filter(r => r.status === STATUS_PAGA);
+  const aprovadas = rows.filter(r => r.status === STATUS_APROVADA);
+  const reprov    = rows.filter(r => r.status === STATUS_REPROV || r.status === STATUS_REPROV2);
+  const total     = rows.filter(r => r.status !== STATUS_ANALISE && r.status !== STATUS_CANCEL);
+
+  const vlPago    = pagas.reduce((s,r)=>s+r.vlFin, 0);
+  const vlPerdido = aprovadas.reduce((s,r)=>s+r.vlFin, 0);
+  const vlRet     = pagas.reduce((s,r)=>s+r.vlRet, 0);
+
+  // Days: count unique calendar days in filtered set
+  const dias = new Set(rows.map(r=>r.data).filter(Boolean)).size || 1;
+
+  const aprov = pagas.length + aprovadas.length > 0
+    ? pagas.length / (pagas.length + aprovadas.length) : 0;
+
+  const ticketMedio = pagas.length > 0 ? vlPago / pagas.length : 0;
+
+  // Seguros sobre pagas
+  const comPrest  = pagas.filter(r => r.segPrest > 0).length;
+  const comAP     = pagas.filter(r => r.segAP > 0).length;
+
+  return { pagas, aprovadas, reprov, total, dias,
+           vlPago, vlPerdido, vlRet,
+           aprov, ticketMedio,
+           comPrest, comAP, nPagas: pagas.length };
+}
+
+function metricsByLoja(rows) {
+  const map = {};
+  for (const r of rows) {
+    if (!map[r.lojista]) map[r.lojista] = { lojista: r.lojista, pagas:[], aprovadas:[], reprov:[], total:[] };
+    const m = map[r.lojista];
+    m.total.push(r);
+    if (r.status === STATUS_PAGA)        m.pagas.push(r);
+    else if (r.status === STATUS_APROVADA) m.aprovadas.push(r);
+    else if (r.status === STATUS_REPROV || r.status === STATUS_REPROV2) m.reprov.push(r);
+  }
+  return Object.values(map).map(m => {
+    const vlPago    = m.pagas.reduce((s,r)=>s+r.vlFin,0);
+    const vlPerdido = m.aprovadas.reduce((s,r)=>s+r.vlFin,0);
+    const nPagas    = m.pagas.length;
+    const nAprov    = m.aprovadas.length;
+    const aprov     = nPagas+nAprov > 0 ? nPagas/(nPagas+nAprov) : null;
+    const ticket    = nPagas > 0 ? vlPago/nPagas : 0;
+    return { ...m, vlPago, vlPerdido, nPagas, nAprov, aprov, ticket };
+  }).sort((a,b) => b.vlPago - a.vlPago);
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────────────────────
+let chartProd = null, chartAprov = null;
+function destroyCharts() {
+  if (chartProd)  { chartProd.destroy();  chartProd  = null; }
+  if (chartAprov) { chartAprov.destroy(); chartAprov = null; }
+}
+
+function renderAll() {
+  const rows  = getRows();
+  const m     = calcMetrics(rows);
+  const lojas = metricsByLoja(rows);
+
+  renderKPIs(m, rows, lojas);
+  renderMetas();
+  renderFunil(rows);
+  renderAprovadas(rows);
+  renderComparativo();
+  renderCharts();
+  renderRanking(lojas, m.vlPago);
+  renderConcentracao(lojas, m.vlPago);
+  renderMomentum(rows);
+  renderConversao(lojas);
+  renderPerfilVeiculo(rows);
+  renderSeguros(m, rows);
+  renderSegurosPorLoja(rows);
+  renderPlanoAcao(m, lojas, rows);
+}
+
+// ─── KPI CARDS ────────────────────────────────────────────────────────────────
+function renderKPIs(m, rows, lojas) {
+  const apovPct  = (m.aprov*100).toFixed(1);
+  const apovCls  = m.aprov >= .70 ? 'good' : m.aprov >= .50 ? 'warn' : 'bad';
+  const totalDig = rows.filter(r => r.status !== STATUS_ANALISE && r.status !== STATUS_CANCEL).length;
+  const apTot    = m.nPagas + m.aprovadas.length;
+  const taxaC6   = totalDig > 0 ? apTot / totalDig * 100 : 0;
+  const taxaC6Cls= taxaC6 >= 60 ? 'good' : taxaC6 >= 45 ? 'warn' : 'bad';
+  const retDia   = fmt(m.vlRet / m.dias);
+  const retProp  = m.nPagas > 0 ? fmtM(m.vlRet / m.nPagas) : '—';
+  const nAprovAb = m.aprovadas.length;
+  const vlAprovAb= m.vlPerdido;
+  const aprovAbCls = nAprovAb === 0 ? 'good' : nAprovAb <= 5 ? 'warn' : 'bad';
+  const lojasZeradas = lojas.filter(l => l.nPagas === 0 && l.total.length > 0).length;
+  const hhi = calcHHI(lojas, m.vlPago);
+  const hhiCls = hhi < 1000 ? 'good' : hhi < 2500 ? 'warn' : 'bad';
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi ${apovCls}">
+      <div class="kpi-label">Aproveitamento</div>
+      <div class="kpi-value">${apovPct}%</div>
+      <div class="kpi-sub">Pagas / (Pagas + Aprov. C6)</div>
+    </div>
+    <div class="kpi ${taxaC6Cls}">
+      <div class="kpi-label">Taxa aprovação C6</div>
+      <div class="kpi-value">${taxaC6.toFixed(1)}%</div>
+      <div class="kpi-sub">${apTot} aprov. de ${totalDig} digitadas</div>
+    </div>
+    <div class="kpi good">
+      <div class="kpi-label">Total pago</div>
+      <div class="kpi-value mono">${fmtM(m.vlPago)}</div>
+      <div class="kpi-sub">${m.nPagas} contratos · ${m.dias}d</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">R$ pago / dia</div>
+      <div class="kpi-value mono">R$ ${fmt(m.vlPago/m.dias)}</div>
+      <div class="kpi-sub">média do período</div>
+    </div>
+    <div class="kpi ${aprovAbCls}">
+      <div class="kpi-label">Aprovadas não pagas</div>
+      <div class="kpi-value">${nAprovAb}</div>
+      <div class="kpi-sub">${fmtM(vlAprovAb)} em risco</div>
+    </div>
+    <div class="kpi bad">
+      <div class="kpi-label">R$ perdido / dia</div>
+      <div class="kpi-value mono">R$ ${fmt(m.vlPerdido/m.dias)}</div>
+      <div class="kpi-sub">média do período</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Retorno / dia</div>
+      <div class="kpi-value mono">R$ ${retDia}</div>
+      <div class="kpi-sub">receita praça · ${retProp}/contrato</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Propostas / dia</div>
+      <div class="kpi-value">${(totalDig/m.dias).toFixed(1)}</div>
+      <div class="kpi-sub">${totalDig} total · ${m.dias}d</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Ticket médio</div>
+      <div class="kpi-value mono">${fmtM(m.ticketMedio)}</div>
+      <div class="kpi-sub">propostas pagas</div>
+    </div>
+    <div class="kpi ${hhiCls}">
+      <div class="kpi-label">HHI concentração</div>
+      <div class="kpi-value">${hhi.toLocaleString('pt-BR')}</div>
+      <div class="kpi-sub">${hhi<1000?'Baixa':hhi<2500?'Moderada':'Alta'} concentração</div>
+    </div>
+    ${lojasZeradas > 0 ? `<div class="kpi bad">
+      <div class="kpi-label">Lojas zeradas</div>
+      <div class="kpi-value">${lojasZeradas}</div>
+      <div class="kpi-sub">sem pagamentos no período</div>
+    </div>` : ''}
+    ${(() => {
+      const mesesKpi = currentMonth === 'ALL'
+        ? [...new Set(ALL_ROWS.map(r=>r.mes).filter(Boolean))].sort()
+        : [currentMonth];
+      const dadosMeta = mesesKpi.map(calcMetaMes).filter(Boolean);
+      if (!dadosMeta.length) return '';
+      // Usa o mês mais recente com meta
+      const d = dadosMeta[dadosMeta.length - 1];
+      const col = metaColor(d.ponderada);
+      const projLine = d.isPartial ? `<div class="kpi-sub">Proj. ${d.projPond.toFixed(1)}% · ${d.diasDecorridos}/${d.diasDoMes}d</div>` : '';
+      const cls = d.ponderada >= 100 ? 'good' : d.ponderada >= 80 ? 'warn' : 'bad';
+      return `<div class="kpi ${cls}" style="border-color:${col}">
+        <div class="kpi-label">Meta ponderada${currentMonth==='ALL'?' ('+monthLabel(d.mes)+')':''}</div>
+        <div class="kpi-value" style="color:${col}">${d.ponderada.toFixed(1)}%</div>
+        <div class="kpi-sub">Prod ${d.pctProd.toFixed(0)}% · Seg ${d.pctSeg.toFixed(0)}%</div>
+        ${projLine}
+      </div>`;
+    })()}
+  `;
+}
+
+// ─── COMPARATIVO MENSAL ───────────────────────────────────────────────────────
+function renderComparativo() {
+  const months = [...new Set(ALL_ROWS.map(r=>r.mes).filter(Boolean))].sort();
+  if (months.length < 2) { document.getElementById('sec-comp').style.display='none'; return; }
+  document.getElementById('sec-comp').style.display='block';
+
+  const cols = months.map(m => ({ m, rows: ALL_ROWS.filter(r=>r.mes===m) }))
+    .map(({m, rows}) => {
+      const mc = calcMetrics(rows);
+      return { m, ...mc };
+    });
+
+  const rows_def = [
+    { label:'Propostas digitadas / dia', fn: c => (c.total.length/c.dias).toFixed(1), fmt:'n' },
+    { label:'Pagas / dia',               fn: c => (c.nPagas/c.dias).toFixed(1),         fmt:'n' },
+    { label:'Aprovadas (perdidas) / dia',fn: c => (c.aprovadas.length/c.dias).toFixed(1),fmt:'n' },
+    { label:'R$ Pago / dia',             fn: c => 'R$ '+fmt(c.vlPago/c.dias),           fmt:'r' },
+    { label:'R$ Perdido / dia',          fn: c => 'R$ '+fmt(c.vlPerdido/c.dias),         fmt:'r' },
+    { label:'Aproveitamento',            fn: c => (c.aprov*100).toFixed(1)+'%',          fmt:'pct', inverted:false },
+    { label:'Ticket médio (pagas)',      fn: c => 'R$ '+fmt(c.ticketMedio),              fmt:'r' },
+    { label:'Lojas que digitaram',       fn: c => [...new Set(c.total.map(r=>r.lojista))].length, fmt:'n' },
+    { label:'Seg. Prestamista / pagas',  fn: c => c.nPagas>0?(c.comPrest/c.nPagas*100).toFixed(0)+'%':'—', fmt:'pct' },
+    { label:'Seg. AP / pagas',           fn: c => c.nPagas>0?(c.comAP/c.nPagas*100).toFixed(0)+'%':'—', fmt:'pct' },
+  ];
+
+  let html = '<thead><tr><th>Métrica</th>';
+  for (const c of cols) html += `<th>${monthLabel(c.m)}</th>`;
+  html += '<th>Tendência</th></tr></thead><tbody>';
+
+  for (const r of rows_def) {
+    html += `<tr><td style="text-align:left">${r.label}</td>`;
+    const vals = cols.map(c => r.fn(c));
+    for (let i=0; i<vals.length; i++) html += `<td>${vals[i]}</td>`;
+    // Trend: last vs previous
+    if (cols.length >= 2) {
+      const rawLast = cols[cols.length-1], rawPrev = cols[cols.length-2];
+      const getLast = parseFloat(r.fn(rawLast));
+      const getPrev = parseFloat(r.fn(rawPrev));
+      if (!isNaN(getLast) && !isNaN(getPrev) && getPrev !== 0) {
+        const delta = ((getLast-getPrev)/Math.abs(getPrev)*100).toFixed(1);
+        const cls   = parseFloat(delta)>0?'arrow-up':'arrow-down';
+        html += `<td class="${cls}">${parseFloat(delta)>0?'▲':'▼'} ${Math.abs(delta)}%</td>`;
+      } else html += '<td class="arrow-flat">—</td>';
+    } else html += '<td></td>';
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('comp-table').innerHTML = html;
+}
+
+// ─── CHARTS ───────────────────────────────────────────────────────────────────
+function renderCharts() {
+  destroyCharts();
+  const months = [...new Set(ALL_ROWS.map(r=>r.mes).filter(Boolean))].sort();
+  if (months.length < 1) return;
+
+  const labels = months.map(m => monthLabel(m));
+  const prodData  = months.map(m => { const mc=calcMetrics(ALL_ROWS.filter(r=>r.mes===m)); return Math.round(mc.vlPago/mc.dias); });
+  const aprovData = months.map(m => { const mc=calcMetrics(ALL_ROWS.filter(r=>r.mes===m)); return parseFloat((mc.aprov*100).toFixed(1)); });
+
+  const baseOpts = { responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8', font:{size:11} } } }, scales:{
+    x:{ ticks:{color:'#94a3b8'}, grid:{color:'rgba(255,255,255,.05)'} },
+    y:{ ticks:{color:'#94a3b8'}, grid:{color:'rgba(255,255,255,.05)'} }
+  }};
+
+  chartProd = new Chart(document.getElementById('chart-producao'), {
+    type: 'bar',
+    data: { labels, datasets:[{ label:'R$/dia', data: prodData, backgroundColor:'#f59e0b', borderRadius:6 }] },
+    options: { ...baseOpts, plugins:{ ...baseOpts.plugins, tooltip:{ callbacks:{ label: ctx => 'R$ '+fmt(ctx.parsed.y) } } } }
+  });
+
+  chartAprov = new Chart(document.getElementById('chart-aprov'), {
+    type: 'line',
+    data: { labels, datasets:[
+      { label:'Aproveitamento %', data: aprovData, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.1)', tension:.3, fill:true, pointBackgroundColor:'#f59e0b', borderWidth:2.5 },
+      { label:'Meta 70%', data: months.map(()=>70), borderColor:'#22c55e', borderDash:[5,5], borderWidth:1.5, pointRadius:0, fill:false }
+    ]},
+    options: { ...baseOpts, scales:{ ...baseOpts.scales, y:{ ...baseOpts.scales?.y, min:0, max:100, ticks:{color:'#94a3b8', callback:v=>v+'%'} } } }
+  });
+}
+
+// ─── RANKING POR LOJA ─────────────────────────────────────────────────────────
+function renderRanking(lojas, totalPago) {
+  const tbody = document.getElementById('ranking-body');
+  tbody.innerHTML = '';
+  lojas.forEach((l, i) => {
+    const pct    = totalPago > 0 ? (l.vlPago/totalPago*100).toFixed(1) : '—';
+    const apovCls= l.aprov === null ? 'gray' : l.aprov >= .70 ? 'green' : l.aprov >= .50 ? 'yellow' : 'red';
+    const apovTxt= l.aprov === null ? '—' : (l.aprov*100).toFixed(0)+'%';
+    const icon   = l.aprov === null ? '' : l.aprov >= .70 ? '✅' : l.aprov >= .50 ? '⚠️' : '🚨';
+    tbody.innerHTML += `<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td><div class="loja-name">${l.lojista}</div></td>
+      <td class="mono">${l.nPagas}</td>
+      <td class="mono">${l.nAprov}</td>
+      <td><span class="badge badge-${apovCls}">${icon} ${apovTxt}</span></td>
+      <td class="mono">${fmtM(l.vlPago)}</td>
+      <td class="mono" style="color:var(--red)">${l.vlPerdido>0?fmtM(l.vlPerdido):'—'}</td>
+      <td class="mono">${pct}%</td>
+      <td class="mono">${l.ticket>0?fmtM(l.ticket):'—'}</td>
+    </tr>`;
+  });
+}
+
+// ─── DIAGNÓSTICO DE CONVERSÃO ─────────────────────────────────────────────────
+function renderConversao(lojas) {
+  const lojasComDados = lojas.filter(l => l.aprov !== null);
+  const verde    = lojasComDados.filter(l => l.aprov >= .70).sort((a,b)=>b.vlPago-a.vlPago);
+  const vermelho = lojasComDados.filter(l => l.aprov < .50).sort((a,b)=>b.vlPerdido-a.vlPerdido);
+  const amarelo  = lojasComDados.filter(l => l.aprov >= .50 && l.aprov < .70);
+
+  const mkLoja = (l, cor) => `
+    <div class="loja-row">
+      <div>
+        <div class="loja-row-name">${l.lojista}</div>
+        <div class="loja-row-sub">${l.nPagas}pg, ${l.nAprov}ap · ${fmtM(l.vlPago)} pago · ${l.vlPerdido>0?fmtM(l.vlPerdido)+' perdido':''}</div>
+      </div>
+      <div class="loja-row-right">
+        <div class="loja-row-aprov" style="color:var(--${cor})">${(l.aprov*100).toFixed(0)}%</div>
+        <div class="loja-row-sub">aprov.</div>
+      </div>
+    </div>`;
+
+  document.getElementById('conv-verde').innerHTML = verde.length
+    ? verde.map(l=>mkLoja(l,'green')).join('')
+    : '<p class="empty-state">Nenhuma loja com aproveitamento ≥ 70%</p>';
+
+  document.getElementById('conv-vermelho').innerHTML = vermelho.length
+    ? vermelho.map(l=>mkLoja(l,'red')).join('')
+    : '<p class="empty-state" style="color:var(--green)">✅ Nenhuma loja abaixo de 50%</p>';
+}
+
+// ─── SEGUROS ──────────────────────────────────────────────────────────────────
+function renderSeguros(m, rows) {
+  const pctPrest = m.nPagas>0 ? (m.comPrest/m.nPagas*100).toFixed(0) : 0;
+  const pctAP    = m.nPagas>0 ? (m.comAP   /m.nPagas*100).toFixed(0) : 0;
+  const vlPrest  = rows.filter(r=>r.status===STATUS_PAGA).reduce((s,r)=>s+r.segPrest,0);
+  const vlAP     = rows.filter(r=>r.status===STATUS_PAGA).reduce((s,r)=>s+r.segAP,0);
+  const metaPrest= 50, metaAP = 60;
+
+  const mkCard = (title, pct, meta, vl, icon) => `
+    <div class="seguro-card">
+      <h3>${icon} ${title}</h3>
+      <div class="seguro-pct" style="color:${pct>=meta?'var(--green)':pct>=meta*.8?'var(--yellow)':'var(--red)'}">${pct}%</div>
+      <div class="seguro-sub">${m.comPrest>0||title.includes('AP')?m.comAP:m.comPrest} contratos com seguro · Total ${fmtM(vl)}</div>
+      <div class="progress-bar-bg"><div class="progress-bar" style="width:${Math.min(pct,100)}%;background:${pct>=meta?'var(--green)':pct>=meta*.8?'var(--yellow)':'var(--red)'}"></div></div>
+      <div class="seguro-sub" style="margin-top:.4rem">Meta: ${meta}% · ${pct>=meta?'✅ Acima da meta':'⚠️ Abaixo da meta'}</div>
+    </div>`;
+
+  document.getElementById('seguro-grid').innerHTML =
+    `<div class="seguro-card">
+      <h3>🛡️ Seguro Prestamista</h3>
+      <div class="seguro-pct" style="color:${pctPrest>=metaPrest?'var(--green)':pctPrest>=metaPrest*.8?'var(--yellow)':'var(--red)'}">${pctPrest}%</div>
+      <div class="seguro-sub">${m.comPrest} de ${m.nPagas} pagas · Total ${fmtM(vlPrest)}</div>
+      <div class="progress-bar-bg"><div class="progress-bar" style="width:${Math.min(pctPrest,100)}%;background:${pctPrest>=metaPrest?'var(--green)':'var(--yellow)'}"></div></div>
+      <div class="seguro-sub" style="margin-top:.4rem">Meta: ${metaPrest}% · ${pctPrest>=metaPrest?'✅ Acima da meta':'⚠️ Abaixo da meta'}</div>
+    </div>
+    <div class="seguro-card">
+      <h3>🛡️ Seguro AP</h3>
+      <div class="seguro-pct" style="color:${pctAP>=metaAP?'var(--green)':pctAP>=metaAP*.8?'var(--yellow)':'var(--red)'}">${pctAP}%</div>
+      <div class="seguro-sub">${m.comAP} de ${m.nPagas} pagas · Total ${fmtM(vlAP)}</div>
+      <div class="progress-bar-bg"><div class="progress-bar" style="width:${Math.min(pctAP,100)}%;background:${pctAP>=metaAP?'var(--green)':'var(--yellow)'}"></div></div>
+      <div class="seguro-sub" style="margin-top:.4rem">Meta: ${metaAP}% · ${pctAP>=metaAP?'✅ Acima da meta':'⚠️ Abaixo da meta'}</div>
+    </div>`;
+}
+
+// ─── METAS ────────────────────────────────────────────────────────────────────
+function calcMetaMes(mes) {
+  const meta = METAS[mes];
+  if (!meta) return null;
+  const rows  = ALL_ROWS.filter(r => r.mes === mes);
+  const pagas = rows.filter(r => r.status === STATUS_PAGA);
+  const prod  = pagas.reduce((s,r) => s + r.vlFin, 0);
+  const seg   = pagas.reduce((s,r) => s + r.segPrest, 0);
+
+  // Dias decorridos no mês (calendário, do dia 1 até o último dia com dado)
+  const [y, m] = mes.split('-').map(Number);
+  const diasDoMes = new Date(y, m, 0).getDate();
+  const datesInMes = [...new Set(rows.map(r=>r.data).filter(Boolean))].sort();
+  const lastDateStr = datesInMes[datesInMes.length - 1] || `${mes}-01`;
+  const lastDay = parseInt(lastDateStr.split('-')[2]);
+  const diasDecorridos = Math.max(lastDay, 1);
+  const isPartial = lastDay < diasDoMes;
+
+  const projProd = isPartial ? prod / diasDecorridos * diasDoMes : prod;
+  const projSeg  = isPartial ? seg  / diasDecorridos * diasDoMes : seg;
+
+  const pctProd     = prod     / meta.prod * 100;
+  const pctSeg      = seg      / meta.seg  * 100;
+  const projPctProd = projProd / meta.prod * 100;
+  const projPctSeg  = projSeg  / meta.seg  * 100;
+  const ponderada   = pctProd     * PESO_PROD + pctSeg     * PESO_SEG;
+  const projPond    = projPctProd * PESO_PROD + projPctSeg * PESO_SEG;
+
+  return { mes, meta, prod, seg, projProd, projSeg,
+           pctProd, pctSeg, ponderada, projPctProd, projPctSeg, projPond,
+           isPartial, diasDecorridos, diasDoMes };
+}
+
+function metaColor(pct) {
+  return pct >= 100 ? 'var(--green)' : pct >= 80 ? 'var(--yellow)' : 'var(--red)';
+}
+function projClass(pct) {
+  return pct >= 100 ? 'proj-good' : pct >= 80 ? 'proj-warn' : 'proj-bad';
+}
+
+function renderMetas() {
+  const el = document.getElementById('metas-content');
+  const meses = [...new Set(ALL_ROWS.map(r=>r.mes).filter(Boolean))].sort();
+  const mesesToShow = currentMonth === 'ALL' ? meses : [currentMonth];
+  const dados = mesesToShow.map(calcMetaMes).filter(Boolean);
+
+  if (!dados.length) {
+    el.innerHTML = '<p class="empty-state">Metas não configuradas para este período</p>';
+    return;
+  }
+
+  // Visão resumida para múltiplos meses (tabela comparativa)
+  if (dados.length > 1) {
+    const rows = dados.map(d => {
+      const cP = metaColor(d.pctProd), cS = metaColor(d.pctSeg), cPo = metaColor(d.ponderada);
+      return `<tr>
+        <td style="font-weight:600">${monthLabel(d.mes)}</td>
+        <td class="mono">${fmtM(d.prod)}</td>
+        <td class="pct-cell" style="color:${cP}">${d.pctProd.toFixed(1)}%</td>
+        <td class="mono">${fmtM(d.seg)}</td>
+        <td class="pct-cell" style="color:${cS}">${d.pctSeg.toFixed(1)}%</td>
+        <td class="pct-cell" style="font-size:1rem;color:${cPo}">${d.ponderada.toFixed(1)}%</td>
+        <td style="font-size:.75rem;color:var(--muted)">${d.isPartial ? `⏳ ${d.diasDecorridos}/${d.diasDoMes}d — proj. <strong style="color:${metaColor(d.projPond)}">${d.projPond.toFixed(1)}%</strong>` : '✔ Fechado'}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `<div class="table-wrap"><table class="meta-table">
+      <thead><tr>
+        <th>Mês</th><th>Produção</th><th>%</th>
+        <th>Seguro</th><th>%</th>
+        <th>Ponderada</th><th>Status</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+    return;
+  }
+
+  // Visão detalhada para mês único
+  const d = dados[0];
+  const mkCard = (label, atual, meta, pct, projPct, isPartial) => {
+    const col  = metaColor(pct);
+    const gap  = atual - meta;
+    const gapTxt = gap >= 0
+      ? `<span class="meta-gap ok">+${fmtM(gap)} acima</span>`
+      : `<span class="meta-gap">${fmtM(Math.abs(gap))} a recuperar</span>`;
+    const projBadge = isPartial
+      ? `<span class="meta-proj-badge ${projClass(projPct)}">Proj. ${projPct.toFixed(1)}%</span>`
+      : '';
+    return `<div class="meta-card">
+      <div class="meta-card-header">
+        <div class="meta-card-label">${label}</div>
+        <div class="meta-card-month">${monthLabel(d.mes)}</div>
+      </div>
+      <div class="meta-card-val" style="color:${col}">${fmtM(atual)}</div>
+      <div class="meta-card-target">Meta: ${fmtM(meta)} &nbsp; ${gapTxt}</div>
+      <div class="meta-prog-bg">
+        <div class="meta-prog" style="width:${Math.min(pct,100)}%;background:${col}"></div>
+      </div>
+      <div class="meta-pct-row">
+        <span class="meta-pct-val" style="color:${col}">${pct.toFixed(1)}%</span>
+        ${projBadge}
+      </div>
+      ${isPartial ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.4rem">${d.diasDecorridos} de ${d.diasDoMes} dias corridos</div>` : ''}
+    </div>`;
+  };
+
+  const colPond = metaColor(d.ponderada);
+  const projPondBadge = d.isPartial
+    ? `<span style="font-size:.9rem;font-weight:600;color:${metaColor(d.projPond)}">Proj. ${d.projPond.toFixed(1)}%</span>`
+    : '';
+
+  el.innerHTML = `<div class="meta-grid">
+    ${mkCard('Produção (peso 70%)', d.prod, d.meta.prod, d.pctProd, d.projPctProd, d.isPartial)}
+    ${mkCard('Seguro (peso 30%)',   d.seg,  d.meta.seg,  d.pctSeg,  d.projPctSeg,  d.isPartial)}
+    <div class="meta-pond-card">
+      <div class="meta-pond-label">Meta ponderada</div>
+      <div class="meta-pond-val" style="color:${colPond}">${d.ponderada.toFixed(1)}%</div>
+      ${projPondBadge}
+      <div class="meta-pond-formula" style="margin-top:.5rem">
+        (${d.pctProd.toFixed(1)}% × 70%) + (${d.pctSeg.toFixed(1)}% × 30%)
+      </div>
+      <div class="meta-pond-sub" style="margin-top:.3rem">${d.ponderada >= 100 ? '✅ Meta atingida' : d.ponderada >= 80 ? '⚠️ Em risco' : '🚨 Abaixo da meta'}</div>
+    </div>
+  </div>`;
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function monthLabel(m) {
+  if (!m || m === 'ALL') return 'Todos';
+  const [y, mo] = m.split('-');
+  const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return `${nomes[parseInt(mo)-1]}/${y.slice(2)}`;
+}
+
+function getAgeGroup(s) {
+  if (!s) return 'Desconhecido';
+  if (/0 KM|0 ANO/i.test(s)) return '0 km / novo';
+  if (/ACIMA/i.test(s)) return 'Acima de 15a';
+  const m = s.match(/(\d+)\s*ANO/i);
+  if (!m) return 'Desconhecido';
+  const age = parseInt(m[1]);
+  if (age === 0) return '0 km / novo';
+  if (age <= 5) return '1 – 5 anos';
+  if (age <= 10) return '6 – 10 anos';
+  if (age <= 15) return '11 – 15 anos';
+  return 'Acima de 15a';
+}
+
+function calcHHI(lojas, totalPago) {
+  if (!totalPago) return 0;
+  return Math.round(lojas.reduce((s, l) => { const sh = l.vlPago / totalPago * 100; return s + sh * sh; }, 0));
+}
+
+// ─── FUNIL ────────────────────────────────────────────────────────────────────
+function renderFunil(rows) {
+  const sem = [STATUS_ANALISE, STATUS_CANCEL];
+  const total    = rows.filter(r => !sem.includes(r.status)).length;
+  const pagas    = rows.filter(r => r.status === STATUS_PAGA).length;
+  const aprovC6  = rows.filter(r => r.status === STATUS_APROVADA).length;
+  const reprov   = rows.filter(r => r.status === STATUS_REPROV).length;
+  const reprov2  = rows.filter(r => r.status === STATUS_REPROV2).length;
+  const analise  = rows.filter(r => r.status === STATUS_ANALISE).length;
+  const apTot    = pagas + aprovC6;
+  const pctApC6  = total > 0 ? (apTot  / total * 100).toFixed(1) : 0;
+  const pctPagas = apTot  > 0 ? (pagas / apTot  * 100).toFixed(1) : 0;
+  const pctRepTot= total  > 0 ? ((reprov+reprov2) / total * 100).toFixed(1) : 0;
+
+  document.getElementById('funil-content').innerHTML = `
+    <div class="funil-wrap">
+      <div class="funil-node">
+        <div class="funil-node-label">Digitadas</div>
+        <div class="funil-node-val">${total}</div>
+        <div class="funil-node-sub">100%</div>
+      </div>
+      <div class="funil-arrow">→</div>
+      <div class="funil-node" style="border:1px solid var(--accent);border-radius:10px">
+        <div class="funil-node-label" style="color:var(--accent)">Aprovadas C6</div>
+        <div class="funil-node-val" style="color:var(--accent)">${apTot}</div>
+        <div class="funil-node-sub">${pctApC6}% das digitadas</div>
+      </div>
+      <div class="funil-arrow">→</div>
+      <div class="funil-node" style="border:1px solid var(--green);border-radius:10px">
+        <div class="funil-node-label" style="color:var(--green)">Pagas</div>
+        <div class="funil-node-val" style="color:var(--green)">${pagas}</div>
+        <div class="funil-node-sub">${pctPagas}% das aprov. C6</div>
+      </div>
+    </div>`;
+
+  document.getElementById('funil-leak').innerHTML = `
+    <div class="funil-leak-item"><span style="color:var(--red)">✗ Perdidas p/ concorrência:</span> <strong>${aprovC6}</strong> (${apTot>0?(aprovC6/apTot*100).toFixed(1):0}% das aprov. C6)</div>
+    <div class="funil-leak-item"><span style="color:var(--muted)">✗ Reprovadas C6:</span> <strong>${reprov+reprov2}</strong> (${pctRepTot}%) — crédito: ${reprov} · após crédito: ${reprov2}</div>
+    ${analise>0?`<div class="funil-leak-item"><span style="color:var(--muted)">⏳ Em análise:</span> <strong>${analise}</strong></div>`:''}`;
+}
+
+// ─── APROVADAS EM ABERTO ──────────────────────────────────────────────────────
+function renderAprovadas(rows) {
+  const aprovadas = rows.filter(r => r.status === STATUS_APROVADA);
+  const el = document.getElementById('aprovadas-content');
+  if (!aprovadas.length) {
+    el.innerHTML = '<p class="empty-state" style="color:var(--green)">✅ Nenhuma proposta aprovada pendente neste período</p>';
+    return;
+  }
+  const byLoja = {};
+  for (const r of aprovadas) {
+    if (!byLoja[r.lojista]) byLoja[r.lojista] = { lojista: r.lojista, n: 0, vl: 0, lastDate: '' };
+    byLoja[r.lojista].n++;
+    byLoja[r.lojista].vl += r.vlFin;
+    if (r.data > byLoja[r.lojista].lastDate) byLoja[r.lojista].lastDate = r.data;
+  }
+  const sorted = Object.values(byLoja).sort((a,b) => b.vl - a.vl);
+  const totalVl = aprovadas.reduce((s,r)=>s+r.vlFin,0);
+
+  el.innerHTML = `
+    <div class="aprov-banner">
+      <div class="aprov-banner-stat"><div class="aprov-banner-stat-label">Propostas</div><div class="aprov-banner-stat-val">${aprovadas.length}</div></div>
+      <div class="aprov-banner-stat"><div class="aprov-banner-stat-label">Valor total</div><div class="aprov-banner-stat-val">${fmtM(totalVl)}</div></div>
+      <div class="aprov-banner-note">C6 já aprovou o crédito — proposta não foi paga. Contate os lojistas para converter ou entender a perda.</div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Loja</th><th>Propostas</th><th>Valor total</th><th>Ticket médio</th><th>Última ocorrência</th></tr></thead>
+      <tbody>${sorted.map(l=>`
+        <tr>
+          <td class="loja-name">${l.lojista}</td>
+          <td class="mono">${l.n}</td>
+          <td class="mono" style="color:var(--red)">${fmtM(l.vl)}</td>
+          <td class="mono">${fmtM(l.vl/l.n)}</td>
+          <td style="color:var(--muted);font-size:.8rem">${l.lastDate}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+// ─── CONCENTRAÇÃO HHI ─────────────────────────────────────────────────────────
+function renderConcentracao(lojas, totalPago) {
+  const el = document.getElementById('concentracao-content');
+  if (!totalPago) { el.innerHTML = '<p class="empty-state">Sem dados</p>'; return; }
+  const hhi = calcHHI(lojas, totalPago);
+  const color  = hhi < 1000 ? 'var(--green)' : hhi < 2500 ? 'var(--yellow)' : 'var(--red)';
+  const status = hhi < 1000 ? '✅ Baixa concentração' : hhi < 2500 ? '⚠️ Moderada' : '🚨 Alta concentração';
+  const top3vl = lojas.slice(0,3).reduce((s,l)=>s+l.vlPago,0);
+  const top3pct = (top3vl/totalPago*100).toFixed(1);
+
+  el.innerHTML = `<div class="conc-wrap">
+    <div class="hhi-card">
+      <div class="hhi-label">HHI</div>
+      <div class="hhi-val" style="color:${color}">${hhi.toLocaleString('pt-BR')}</div>
+      <div class="hhi-status" style="color:${color}">${status}</div>
+      <div class="hhi-ref">&lt;1.000 baixa<br>1.000–2.500 moderada<br>&gt;2.500 alta</div>
+      <div style="font-size:.75rem;color:var(--muted);margin-top:.6rem">Top 3 lojas: <strong style="color:var(--text)">${top3pct}%</strong> da praça</div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>Loja</th><th>R$ Pago</th><th>% Praça</th></tr></thead>
+      <tbody>${lojas.slice(0,8).map((l,i)=>{
+        const pct = (l.vlPago/totalPago*100);
+        return `<tr>
+          <td style="color:var(--muted)">${i+1}</td>
+          <td>
+            <div class="loja-name">${l.lojista}</div>
+            <div class="conc-bar-bg"><div class="conc-bar" style="width:${pct}%"></div></div>
+          </td>
+          <td class="mono">${fmtM(l.vlPago)}</td>
+          <td class="mono" style="font-weight:700">${pct.toFixed(1)}%</td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+// ─── MOMENTUM ─────────────────────────────────────────────────────────────────
+function renderMomentum(rows) {
+  const el = document.getElementById('momentum-content');
+  const dates = [...new Set(rows.map(r=>r.data).filter(Boolean))].sort();
+  if (dates.length < 7) { el.innerHTML = '<p class="empty-state">Período insuficiente (mínimo 7 dias)</p>'; return; }
+  const split = dates[Math.max(0, dates.length - 14)];
+  const rec = rows.filter(r => r.data >= split);
+  const ant = rows.filter(r => r.data <  split);
+  if (!ant.length) { el.innerHTML = '<p class="empty-state">Sem período anterior para comparar</p>'; return; }
+  const mR = calcMetrics(rec), mA = calcMetrics(ant);
+  const nRec = new Set(rec.map(r=>r.data)).size, nAnt = new Set(ant.map(r=>r.data)).size;
+
+  const metrics = [
+    { label:'R$ Pago / dia',    r: mR.vlPago/nRec,            a: mA.vlPago/nAnt,            fmt: v=>'R$ '+fmt(v) },
+    { label:'Pagas / dia',      r: mR.nPagas/nRec,            a: mA.nPagas/nAnt,            fmt: v=>v.toFixed(1) },
+    { label:'Propostas / dia',  r: mR.total.length/nRec,      a: mA.total.length/nAnt,      fmt: v=>v.toFixed(1) },
+    { label:'Aproveitamento',   r: mR.aprov*100,              a: mA.aprov*100,              fmt: v=>v.toFixed(1)+'%' },
+  ];
+
+  el.innerHTML = `
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem">
+      <strong style="color:var(--text)">Últimos ${nRec} dias</strong> vs. <strong style="color:var(--text)">${nAnt} dias anteriores</strong>
+    </div>
+    <div class="momentum-grid">
+      ${metrics.map(m => {
+        const delta = m.a > 0 ? (m.r - m.a) / m.a * 100 : null;
+        const flat  = delta !== null && Math.abs(delta) < 2;
+        const up    = delta !== null && delta > 0;
+        const col   = flat ? 'var(--muted)' : up ? 'var(--green)' : 'var(--red)';
+        return `<div class="momentum-card">
+          <div class="momentum-card-label">${m.label}</div>
+          <div class="momentum-row"><span style="color:var(--muted)">Recentes</span><strong>${m.fmt(m.r)}</strong></div>
+          <div class="momentum-row"><span style="color:var(--muted)">Anterior</span><span>${m.fmt(m.a)}</span></div>
+          ${delta!==null?`<div class="momentum-delta" style="color:${col}">${flat?'→ Estável':up?`▲ +${delta.toFixed(1)}%`:`▼ ${delta.toFixed(1)}%`}</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ─── PERFIL DO VEÍCULO ────────────────────────────────────────────────────────
+function renderPerfilVeiculo(rows) {
+  const todas = rows.filter(r => r.status !== STATUS_ANALISE && r.status !== STATUS_CANCEL);
+  const pagas = rows.filter(r => r.status === STATUS_PAGA);
+  const grupos = ['0 km / novo','1 – 5 anos','6 – 10 anos','11 – 15 anos','Acima de 15a'];
+  const data = grupos.map(g => ({
+    label: g,
+    total: todas.filter(r => getAgeGroup(r.idadeVei) === g).length,
+    pagas: pagas.filter(r => getAgeGroup(r.idadeVei) === g).length,
+  }));
+  const maxT = Math.max(...data.map(d=>d.total), 1);
+  const colors = ['#22c55e','#84cc16','#f59e0b','#f97316','#ef4444'];
+
+  document.getElementById('veiculo-content').innerHTML = `
+    <div class="veiculo-bars">
+      ${data.map((d,i)=>`
+        <div class="vei-row">
+          <div class="vei-label">${d.label}</div>
+          <div class="vei-bar-bg"><div class="vei-bar" style="width:${d.total/maxT*100}%;background:${colors[i]}"></div></div>
+          <div class="vei-count">${d.total}</div>
+          <div class="vei-sub">${d.pagas}pg · ${d.total>0?(d.pagas/d.total*100).toFixed(0):0}%</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ─── SEGUROS POR LOJA ─────────────────────────────────────────────────────────
+function renderSegurosPorLoja(rows) {
+  const pagas = rows.filter(r => r.status === STATUS_PAGA);
+  const el = document.getElementById('seguros-loja-content');
+  if (!pagas.length) { el.innerHTML = '<p class="empty-state">Sem contratos pagos</p>'; return; }
+  const map = {};
+  for (const r of pagas) {
+    if (!map[r.lojista]) map[r.lojista] = { lojista: r.lojista, total:0, prest:0, ap:0 };
+    map[r.lojista].total++;
+    if (r.segPrest > 0) map[r.lojista].prest++;
+    if (r.segAP    > 0) map[r.lojista].ap++;
+  }
+  const sorted = Object.values(map).filter(l=>l.total>=2).sort((a,b)=>b.total-a.total);
+  if (!sorted.length) { el.innerHTML = '<p class="empty-state">Sem lojas com ≥2 contratos pagos</p>'; return; }
+
+  el.innerHTML = `<div class="table-wrap"><table class="seg-loja-table">
+    <thead><tr><th>Loja</th><th>Pagas</th><th>Prestamista (meta 50%)</th><th>Seg. AP (meta 60%)</th></tr></thead>
+    <tbody>${sorted.map(l=>{
+      const pP = l.total>0?(l.prest/l.total*100).toFixed(0):0;
+      const pA = l.total>0?(l.ap   /l.total*100).toFixed(0):0;
+      const cP = pP>=50?'var(--green)':pP>=40?'var(--yellow)':'var(--red)';
+      const cA = pA>=60?'var(--green)':pA>=48?'var(--yellow)':'var(--red)';
+      return `<tr>
+        <td class="loja-name">${l.lojista}</td>
+        <td class="mono">${l.total}</td>
+        <td><span style="font-weight:700;color:${cP}">${pP}%</span>
+            <div class="mini-bar-bg"><div class="mini-bar" style="width:${Math.min(pP,100)}%;background:${cP}"></div></div></td>
+        <td><span style="font-weight:700;color:${cA}">${pA}%</span>
+            <div class="mini-bar-bg"><div class="mini-bar" style="width:${Math.min(pA,100)}%;background:${cA}"></div></div></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+// ─── PLANO DE AÇÃO ────────────────────────────────────────────────────────────
+function renderPlanoAcao(m, lojas, rows) {
+  const acoes = [];
+  const lojasComDados = lojas.filter(l => l.aprov !== null);
+  const pNum = () => `P${acoes.length + 1}`;
+
+  // P0: Alerta de meta — mês em curso abaixo do ritmo necessário
+  const mesAtual = currentMonth !== 'ALL' ? currentMonth
+    : [...new Set(ALL_ROWS.map(r=>r.mes).filter(Boolean))].sort().slice(-1)[0];
+  if (mesAtual) {
+    const dm = calcMetaMes(mesAtual);
+    if (dm && dm.isPartial) {
+      const diasRestantes = dm.diasDoMes - dm.diasDecorridos;
+      if (dm.projPond < 100 && diasRestantes > 0) {
+        const defProd = Math.max(0, dm.meta.prod - dm.prod);
+        const defSeg  = Math.max(0, dm.meta.seg  - dm.seg);
+        const ritmoNec = defProd / diasRestantes;
+        const ritmoAtual = dm.prod / dm.diasDecorridos;
+        acoes.push({ p: pNum(), urgency: dm.projPond < 80 ? '🚨 URGENTE' : '⚠️ ATENÇÃO',
+          title: `Meta de ${monthLabel(mesAtual)} em risco — projeção ${dm.projPond.toFixed(1)}%`,
+          desc: `Ritmo atual: ${fmtM(ritmoAtual)}/dia de produção. Para fechar a meta nos ${diasRestantes} dias restantes, precisa de ${fmtM(ritmoNec)}/dia${defSeg > 0 ? ` · Faltam ${fmtM(defSeg)} em seguro` : ''}.`,
+          meta: `Ponderada atual: ${dm.ponderada.toFixed(1)}% → necessário 100% (prod ${dm.meta.prod >= dm.prod ? fmtM(defProd)+' a recuperar' : 'ok'})` });
+      } else if (dm.projPond >= 100) {
+        acoes.push({ p: '✅', title: `Meta de ${monthLabel(mesAtual)} no caminho certo`,
+          desc: `Projeção de fechamento: ${dm.projPond.toFixed(1)}% ponderada (prod ${dm.projPctProd.toFixed(1)}% · seg ${dm.projPctSeg.toFixed(1)}%). Manter ritmo.`,
+          meta: '' });
+      }
+    }
+  }
+
+  // P1: Aprovadas recentes pela C6 ainda não pagas (oportunidade imediata)
+  const allDates = [...new Set(rows.map(r=>r.data).filter(Boolean))].sort();
+  const cutoff14 = allDates.length >= 14 ? allDates[allDates.length - 14] : allDates[0];
+  const aprovRec = rows.filter(r => r.status === STATUS_APROVADA && r.data >= cutoff14);
+  if (aprovRec.length > 0) {
+    const vlRec = aprovRec.reduce((s,r)=>s+r.vlFin,0);
+    const lojasRec = [...new Set(aprovRec.map(r=>r.lojista))].slice(0,3).join(', ');
+    acoes.push({ p: pNum(), urgency:'🔥 URGENTE',
+      title:'Recuperar aprovadas recentes',
+      desc:`${aprovRec.length} propostas aprovadas pela C6 nos últimos 14 dias sem pagamento — ${fmtM(vlRec)} em risco. Lojas: ${lojasRec}. Acionar imediatamente.`,
+      meta:'C6 já aprovou — agir antes do prazo expirar' });
+  }
+
+  // Pior aproveitamento < 50%
+  const piores = lojasComDados.filter(l=>l.aprov<.50).sort((a,b)=>b.vlPerdido-a.vlPerdido);
+  if (piores.length > 0) {
+    const p = piores[0];
+    acoes.push({ p: pNum(), urgency: aprovRec.length===0 ? '🚨 URGENTE' : undefined,
+      title:`Converter ${p.lojista}`,
+      desc:`${(p.aprov*100).toFixed(0)}% aproveitamento — ${p.nAprov} aprovadas perdidas p/ concorrência (${fmtM(p.vlPerdido)}). Reunião para entender os motivos das perdas.`,
+      meta:`Meta ≥ 50% → +${fmtM(p.vlPerdido*.5)} estimado` });
+  }
+  if (piores.length > 1) {
+    const p = piores[1];
+    acoes.push({ p: pNum(),
+      title:`Recuperar ${p.lojista}`,
+      desc:`${(p.aprov*100).toFixed(0)}% aproveitamento · ${fmtM(p.vlPerdido)} perdido. Avaliar propostas aprovadas e acionar o lojista.`,
+      meta:`Meta ≥ 60% → +${fmtM(p.vlPerdido*.4)} estimado` });
+  }
+
+  // HHI alto
+  const hhi = calcHHI(lojas, m.vlPago);
+  if (hhi > 2500 && lojas.length > 0) {
+    const top = lojas[0];
+    acoes.push({ p: pNum(),
+      title:'Reduzir concentração da praça',
+      desc:`HHI ${hhi.toLocaleString('pt-BR')} — alta concentração. ${top.lojista} representa ${(top.vlPago/m.vlPago*100).toFixed(1)}% do volume. Um problema nessa loja derruba o resultado da praça.`,
+      meta:'Ativar e ampliar volume das lojas secundárias' });
+  }
+
+  // Lojas inativas com histórico
+  const meses = [...new Set(ALL_ROWS.map(r=>r.mes).filter(Boolean))].sort();
+  if (meses.length >= 2 && currentMonth !== 'ALL') {
+    const mesPrev = meses[meses.indexOf(currentMonth) - 1];
+    if (mesPrev) {
+      const ativasAntes = new Set(ALL_ROWS.filter(r=>r.mes===mesPrev && r.status===STATUS_PAGA).map(r=>r.lojista));
+      const ativasAgora = new Set(rows.filter(r=>r.status===STATUS_PAGA).map(r=>r.lojista));
+      const desativadas = [...ativasAntes].filter(l => !ativasAgora.has(l));
+      if (desativadas.length > 0) {
+        acoes.push({ p: pNum(),
+          title:'Reativar lojas inativas',
+          desc:`${desativadas.length} loja(s) que pagaram em ${monthLabel(mesPrev)} sem pagamentos neste período: ${desativadas.join(', ')}.`,
+          meta:'Reengajar lojistas com histórico recente' });
+      }
+    }
+  }
+
+  // Destaques a escalar
+  const destaques = lojasComDados.filter(l=>l.aprov>=.70 && l.vlPago>0).sort((a,b)=>b.vlPago-a.vlPago).slice(0,3);
+  if (destaques.length > 0) {
+    acoes.push({ p: pNum(),
+      title:'Escalar destaques',
+      desc:`${destaques.map(l=>`${l.lojista} (${(l.aprov*100).toFixed(0)}%, ${fmtM(l.vlPago)})`).join('; ')} — aproveitamento excelente. Ampliar volume e manter continuidade.`,
+      meta:'Manter aproveitamento ≥ 70% e crescer carteira' });
+  }
+
+  // Seguros
+  const pctPrest = m.nPagas>0 ? m.comPrest/m.nPagas*100 : 0;
+  const pctAP    = m.nPagas>0 ? m.comAP   /m.nPagas*100 : 0;
+  if (pctPrest < 50 || pctAP < 60) {
+    const probs = [];
+    if (pctPrest < 50) probs.push(`Prestamista ${pctPrest.toFixed(0)}% (meta 50%)`);
+    if (pctAP    < 60) probs.push(`AP ${pctAP.toFixed(0)}% (meta 60%)`);
+    acoes.push({ p: pNum(),
+      title:'Elevar adesão de seguros',
+      desc:`${probs.join(' · ')}. Treinar lojistas na oferta e replicar práticas das lojas com melhor adesão.`,
+      meta:'Meta: Prestamista ≥ 50% · AP ≥ 60%' });
+  }
+
+  if (acoes.length === 0) {
+    acoes.push({ p:'✅', title:'Praça em boa performance', desc:'Nenhum alerta crítico. Manter ritmo e monitorar semanalmente.', meta:'' });
+  }
+
+  document.getElementById('plano-list').innerHTML = acoes.map(a => `
+    <div class="plano-item">
+      <div class="plano-p">${a.p}</div>
+      <div>
+        <div class="plano-title">${a.urgency?`<span style="font-size:.75rem;margin-right:.4rem">${a.urgency}</span>`:''}${a.title}</div>
+        <div class="plano-desc">${a.desc}</div>
+        ${a.meta?`<div class="plano-meta">${a.meta}</div>`:''}
+      </div>
+    </div>`).join('');
+}
+
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
+let adminDropFile = null;
+
+async function uploadData() {
+  const pwd    = document.getElementById('admin-pwd').value.trim();
+  const file   = document.getElementById('admin-file').files[0] || adminDropFile;
+  const status = document.getElementById('admin-status');
+
+  if (!pwd)  { status.style.color = 'var(--yellow)'; status.textContent = 'Informe a senha.'; return; }
+  if (!file) { status.style.color = 'var(--yellow)'; status.textContent = 'Selecione um arquivo CSV.'; return; }
+
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Enviando...';
+  document.getElementById('admin-submit').disabled = true;
+
+  const form = new FormData();
+  form.append('csv', file);
+
+  try {
+    const res  = await fetch('/upload', { method: 'POST', headers: { 'x-password': pwd }, body: form });
+    const data = await res.json();
+    if (data.ok) {
+      status.style.color = 'var(--green)';
+      status.textContent = '✅ ' + data.message;
+      setTimeout(() => location.reload(), 1800);
+    } else {
+      status.style.color = 'var(--red)';
+      status.textContent = '❌ ' + data.error;
+      document.getElementById('admin-submit').disabled = false;
+    }
+  } catch {
+    status.style.color = 'var(--red)';
+    status.textContent = '❌ Erro de conexão.';
+    document.getElementById('admin-submit').disabled = false;
+  }
+}
+
+// ─── FORMATTERS ───────────────────────────────────────────────────────────────
+function fmt(n) {
+  if (isNaN(n)||n===null) return '—';
+  if (Math.abs(n) >= 1000000) return (n/1000000).toFixed(2).replace('.',',')+'M';
+  if (Math.abs(n) >= 1000)    return (n/1000).toFixed(1).replace('.',',')+'k';
+  return n.toFixed(0);
+}
+function fmtM(n) {
+  if (isNaN(n)||!n) return '—';
+  if (n >= 1000000) return 'R$ '+(n/1000000).toFixed(2).replace('.',',')+'M';
+  if (n >= 1000)    return 'R$ '+(n/1000).toFixed(0)+'k';
+  return 'R$ '+n.toFixed(0);
+}
+</script>
+
+<!-- PAINEL ADMIN -->
+<div id="admin-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--card);border-radius:16px;padding:2rem;width:min(460px,92vw);position:relative;">
+    <button onclick="document.getElementById('admin-overlay').style.display='none'"
+      style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1;">✕</button>
+    <h2 style="font-size:1.1rem;margin-bottom:1.25rem;">⚙ Atualizar dados da praça</h2>
+
+    <label style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Senha</label>
+    <input id="admin-pwd" type="password" placeholder="Senha de administrador"
+      style="display:block;width:100%;margin:.4rem 0 1rem;padding:.6rem .85rem;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.9rem;" />
+
+    <label style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Arquivo CSV</label>
+    <div id="admin-drop"
+      style="margin:.4rem 0 1rem;border:2px dashed var(--border);border-radius:10px;padding:1.25rem;text-align:center;cursor:pointer;font-size:.85rem;color:var(--muted);transition:border-color .15s"
+      onclick="document.getElementById('admin-file').click()"
+      ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+      ondragleave="this.style.borderColor=''"
+      ondrop="event.preventDefault();this.style.borderColor='';adminDropFile=event.dataTransfer.files[0];document.getElementById('admin-drop-name').textContent=adminDropFile.name">
+      <div style="font-size:1.5rem;margin-bottom:.4rem">📂</div>
+      <span id="admin-drop-name">Arraste o CSV ou clique para selecionar</span>
+    </div>
+    <input id="admin-file" type="file" accept=".csv" style="display:none"
+      onchange="document.getElementById('admin-drop-name').textContent=this.files[0]?.name||''" />
+
+    <button id="admin-submit" onclick="uploadData()"
+      style="width:100%;padding:.7rem;background:var(--accent);color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-size:.95rem;">
+      Enviar e atualizar dashboard
+    </button>
+    <div id="admin-status" style="margin-top:.75rem;font-size:.85rem;min-height:1.2em;text-align:center;"></div>
+  </div>
+</div>
+</body>
+</html>

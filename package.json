@@ -1,0 +1,13 @@
+{
+  "name": "bi-veiculos",
+  "version": "1.0.0",
+  "description": "BI Digitação — Acompanhamento Veículos C6 Bank",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}
