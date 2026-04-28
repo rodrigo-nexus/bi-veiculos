@@ -285,7 +285,9 @@
     <div class="section">
       <div class="chart-card">
         <div class="chart-title" id="chart-diario-title">R$ Pago vs. Aprovado não pago por dia</div>
-        <canvas id="chart-diario" height="130"></canvas>
+        <div style="height:260px;position:relative">
+          <canvas id="chart-diario"></canvas>
+        </div>
       </div>
     </div>
 
@@ -845,6 +847,7 @@ function renderChartDiario() {
     },
     options: {
       ...baseOpts,
+      maintainAspectRatio: false,
       plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': R$ ' + fmt(ctx.parsed.y) } } }
     }
   });
