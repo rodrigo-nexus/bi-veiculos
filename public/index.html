@@ -334,6 +334,12 @@
       </div>
     </div>
 
+    <!-- ANÁLISE SEMANAL -->
+    <div class="section">
+      <div class="section-title">Ritmo semanal — digitação, aprovação e pagamento por semana</div>
+      <div id="semanal-dig-content"></div>
+    </div>
+
     <!-- RANKING POR LOJA -->
     <div class="section">
       <div class="section-title">Ranking por loja — período selecionado</div>
@@ -657,11 +663,12 @@ function metricsByLoja(rows) {
 }
 
 // ─── RENDER ALL ───────────────────────────────────────────────────────────────
-let chartProd = null, chartAprov = null, chartDiario = null;
+let chartProd = null, chartAprov = null, chartDiario = null, chartSemanal = null;
 function destroyCharts() {
-  if (chartProd)   { chartProd.destroy();   chartProd   = null; }
-  if (chartAprov)  { chartAprov.destroy();  chartAprov  = null; }
-  if (chartDiario) { chartDiario.destroy(); chartDiario = null; }
+  if (chartProd)    { chartProd.destroy();    chartProd    = null; }
+  if (chartAprov)   { chartAprov.destroy();   chartAprov   = null; }
+  if (chartDiario)  { chartDiario.destroy();  chartDiario  = null; }
+  if (chartSemanal) { chartSemanal.destroy(); chartSemanal = null; }
 }
 
 function renderAll() {
@@ -675,6 +682,7 @@ function renderAll() {
   renderAprovadas(rows);
   renderComparativo();
   renderCharts();
+  renderSemanalDig();
   renderRanking(lojas, m.vlPago);
   renderConcentracao(lojas, m.vlPago);
   renderMomentum(rows);
@@ -916,6 +924,108 @@ function renderChartDiario() {
       ...baseOpts,
       maintainAspectRatio: false,
       plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': R$ ' + fmt(ctx.parsed.y) } } }
+    }
+  });
+}
+
+// ─── ANÁLISE SEMANAL ──────────────────────────────────────────────────────────
+function renderSemanalDig() {
+  const el = document.getElementById('semanal-dig-content');
+  if (!el) return;
+
+  const mes = currentMonth !== 'ALL'
+    ? currentMonth
+    : [...new Set(ALL_ROWS.map(r => r.mes).filter(Boolean))].sort().slice(-1)[0];
+  if (!mes) { el.innerHTML = '<p class="empty-state">Sem dados.</p>'; return; }
+
+  const rowsMes = ALL_ROWS.filter(r => r.mes === mes);
+  if (!rowsMes.length) { el.innerHTML = '<p class="empty-state">Sem dados para o mês.</p>'; return; }
+
+  const weeks = [0,1,2,3].map(() => ({ digitadas:0, pagas:0, aprovadas:0, vlPago:0, vlAprovado:0 }));
+
+  for (const r of rowsMes) {
+    if (!r.data || r.status === STATUS_ANALISE || r.status === STATUS_CANCEL) continue;
+    const day = parseInt(r.data.substring(8,10), 10);
+    const w   = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3;
+    weeks[w].digitadas++;
+    if      (r.status === STATUS_PAGA)     { weeks[w].pagas++;    weeks[w].vlPago     += r.vlFin; }
+    else if (r.status === STATUS_APROVADA) { weeks[w].aprovadas++; weeks[w].vlAprovado += r.vlFin; }
+  }
+
+  // Limita às semanas já iniciadas no mês atual
+  const today = new Date();
+  const isMesAtual = mes === today.toISOString().substring(0,7);
+  const lastWeek   = isMesAtual ? (today.getDate() <= 7 ? 0 : today.getDate() <= 14 ? 1 : today.getDate() <= 21 ? 2 : 3) : 3;
+
+  const wLabels = ['S1 (dias 1–7)', 'S2 (dias 8–14)', 'S3 (dias 15–21)', 'S4 (dias 22+)'];
+
+  let tHTML = `<div class="table-wrap" style="margin-bottom:.75rem"><table>
+    <thead><tr>
+      <th>Semana</th>
+      <th style="text-align:right">Digitadas</th>
+      <th style="text-align:right">Pagas</th>
+      <th style="text-align:right">Aprov. perdidas</th>
+      <th style="text-align:right">R$ Pago</th>
+      <th style="text-align:right">Conversão</th>
+    </tr></thead><tbody>`;
+
+  let totDig=0, totPagas=0, totAprov=0, totVl=0;
+
+  for (let w = 0; w <= lastWeek; w++) {
+    const wk = weeks[w];
+    const conv = (wk.pagas + wk.aprovadas) > 0 ? wk.pagas / (wk.pagas + wk.aprovadas) * 100 : null;
+    const convTxt = conv !== null ? conv.toFixed(0)+'%' : '—';
+    const convStyle = conv === null ? '' : conv >= 70 ? 'color:var(--green)' : conv >= 50 ? 'color:var(--yellow)' : 'color:var(--red)';
+    totDig += wk.digitadas; totPagas += wk.pagas; totAprov += wk.aprovadas; totVl += wk.vlPago;
+    tHTML += `<tr>
+      <td style="font-weight:700">${wLabels[w]}</td>
+      <td style="text-align:right">${wk.digitadas || '—'}</td>
+      <td style="text-align:right">${wk.pagas || '—'}</td>
+      <td style="text-align:right;color:var(--red)">${wk.aprovadas > 0 ? wk.aprovadas : '—'}</td>
+      <td style="text-align:right" class="mono">${wk.vlPago > 0 ? fmtM(wk.vlPago) : '—'}</td>
+      <td style="text-align:right;font-weight:700;${convStyle}">${convTxt}</td>
+    </tr>`;
+  }
+
+  const totConvTxt = (totPagas+totAprov) > 0 ? (totPagas/(totPagas+totAprov)*100).toFixed(0)+'%' : '—';
+  tHTML += `<tr style="border-top:2px solid var(--border);font-weight:700;color:var(--accent)">
+    <td>Total (${monthLabel(mes)})</td>
+    <td style="text-align:right">${totDig}</td>
+    <td style="text-align:right">${totPagas}</td>
+    <td style="text-align:right">${totAprov > 0 ? totAprov : '—'}</td>
+    <td style="text-align:right" class="mono">${fmtM(totVl)}</td>
+    <td style="text-align:right">${totConvTxt}</td>
+  </tr></tbody></table></div>`;
+
+  tHTML += `<div class="chart-card">
+    <div class="chart-title">R$ Pago vs. Aprovado não pago por semana — ${monthLabel(mes)}</div>
+    <div style="height:240px;position:relative"><canvas id="chart-semanal-dig"></canvas></div>
+  </div>`;
+
+  el.innerHTML = tHTML;
+
+  if (chartSemanal) { chartSemanal.destroy(); chartSemanal = null; }
+
+  const activeW = [0,1,2,3].slice(0, lastWeek+1);
+  chartSemanal = new Chart(document.getElementById('chart-semanal-dig'), {
+    type: 'bar',
+    data: {
+      labels: activeW.map(w => wLabels[w]),
+      datasets: [
+        { label:'R$ Pago',              data: activeW.map(w => weeks[w].vlPago),     backgroundColor:'#f59e0b',              borderRadius:5 },
+        { label:'R$ Aprovado não pago', data: activeW.map(w => weeks[w].vlAprovado), backgroundColor:'rgba(239,68,68,.7)',    borderRadius:5 }
+      ]
+    },
+    options: {
+      maintainAspectRatio: false, responsive: true,
+      plugins: {
+        legend: { labels: { color:'#94a3b8', font:{size:11} } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtM(ctx.parsed.y) } }
+      },
+      scales: {
+        x: { ticks:{color:'#94a3b8'}, grid:{color:'rgba(255,255,255,.05)'} },
+        y: { ticks:{color:'#94a3b8', callback: v => 'R$'+fmt(v)}, grid:{color:'rgba(255,255,255,.05)'} }
+      }
     }
   });
 }
